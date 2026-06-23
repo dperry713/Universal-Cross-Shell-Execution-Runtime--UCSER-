@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Universal Cross-Shell Execution Runtime (UCSER)</h1>
+  <h1> (UCSER)</h1>
   
   <p>
     <strong>Auditable • Policy-Driven • Cross-Platform Workflow Engine</strong><br>
