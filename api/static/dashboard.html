@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UCSER Cockpit Console — SENTINEL::OBSERVE</title>
+    <meta name="description" content="Universal Cross-Shell Execution Runtime — Auditable, Cross-Platform, Secure execution control plane.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyberBg:'#0A1428', panelBg:'rgba(16,28,48,0.75)',
+                        cyberCyan:'#00F5FF', cyberGreen:'#00FF66', cyberRed:'#FF3366',
+                        cyberYellow:'#FFCC00', cyberBlue:'#0055FF', cyberPurple:'#9A33FF',
+                        cyberGray:'#4A5568', cyberOrange:'#FF6B35'
+                    },
+                    fontFamily: {
+                        sans:['Inter','system-ui','sans-serif'],
+                        mono:['Fira Code','SF Mono','monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body{background-color:#0A1428;background-image:radial-gradient(at 0% 0%,rgba(0,245,255,.04) 0,transparent 50%),radial-gradient(at 100% 100%,rgba(154,51,255,.04) 0,transparent 50%),linear-gradient(rgba(10,20,40,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(10,20,40,.5) 1px,transparent 1px);background-size:100% 100%,100% 100%,40px 40px,40px 40px}
+        .glassmorphic{background:rgba(16,28,48,.65);backdrop-filter:blur(12px);border:1px solid rgba(0,245,255,.15);box-shadow:0 8px 32px 0 rgba(0,0,0,.37);transition:border-color .2s,box-shadow .2s}
+        .glassmorphic:hover{border-color:rgba(0,245,255,.3);box-shadow:0 8px 32px 0 rgba(0,245,255,.05)}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:rgba(10,20,40,.5)}::-webkit-scrollbar-thumb{background:rgba(0,245,255,.25);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:rgba(0,245,255,.5)}
+        .pulse-dot{box-shadow:0 0 0 0 rgba(0,245,255,.7);animation:pulseA 1.6s infinite cubic-bezier(.66,0,0,1)}
+        @keyframes pulseA{to{box-shadow:0 0 0 8px rgba(0,245,255,0)}}
+        .pulse-red{box-shadow:0 0 0 0 rgba(255,51,102,.7);animation:pulseR 1.6s infinite cubic-bezier(.66,0,0,1)}
+        @keyframes pulseR{to{box-shadow:0 0 0 8px rgba(255,51,102,0)}}
+        .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(0,245,255,.06) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:shimmer 1.8s infinite}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        #copilot-panel{transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+        #copilot-panel.open{transform:translateX(0)}
+        #sidebar{transition:width .3s ease;overflow:hidden}
+        #sidebar.collapsed .sidebar-label{display:none}
+        [data-tip]{position:relative;cursor:help}
+        [data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(6,14,30,.97);border:1px solid rgba(0,245,255,.3);color:#94a3b8;font-size:10px;font-family:'Fira Code',monospace;padding:4px 8px;border-radius:4px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s;z-index:200}
+        [data-tip]:hover::after{opacity:1}
+        .node-valid{box-shadow:0 0 8px rgba(0,255,102,.4)}
+        .node-block{box-shadow:0 0 10px rgba(255,51,102,.5);border-color:#FF3366!important}
+        .node-sel{box-shadow:0 0 14px rgba(0,245,255,.7)!important}
+        .canvas-node{position:absolute;user-select:none;cursor:grab;z-index:2}
+        .canvas-node:active{cursor:grabbing}
+        .gantt-bar{cursor:pointer;transition:filter .15s}
+        .gantt-bar:hover{filter:brightness(1.4)}
+        .gantt-bar.active-bar{filter:brightness(1.7)!important}
+        body.redteam-mode .glassmorphic{border-color:rgba(255,51,102,.18)}
+        body.redteam-mode .glassmorphic:hover{border-color:rgba(255,51,102,.4);box-shadow:0 8px 32px 0 rgba(255,51,102,.06)}
+        body.auditor-mode .glassmorphic{border-color:rgba(154,51,255,.18)}
+        body.auditor-mode .glassmorphic:hover{border-color:rgba(154,51,255,.4);box-shadow:0 8px 32px 0 rgba(154,51,255,.06)}
+        .diff-add{background:rgba(0,255,102,.1);color:#00FF66;border-left:3px solid #00FF66;padding-left:6px;margin-bottom:2px}
+        .diff-rem{background:rgba(255,51,102,.1);color:#FF3366;border-left:3px solid #FF3366;padding-left:6px;margin-bottom:2px}
+        .typing-dot{animation:tdot 1.2s infinite}.typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
+        @keyframes tdot{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1.2);opacity:1}}
+        #breadcrumb-bar{border-bottom:1px solid rgba(0,245,255,.08);background:rgba(6,14,30,.92)}
+        .tl-detail{display:none}
+        tbody tr:hover{background:rgba(0,245,255,.04)}
+        input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(0,245,255,.5)!important;box-shadow:0 0 0 2px rgba(0,245,255,.1)}
+        .notif-unread{background:rgba(0,245,255,.03);border-color:rgba(0,245,255,.15)!important}
+        details summary{list-style:none}
+        details summary::-webkit-details-marker{display:none}
+    </style>
+</head>
+<body class="text-slate-200 font-sans flex flex-col overflow-x-hidden min-h-screen">
+
+<!-- LOGIN -->
+<div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-cyberBg flex-col p-4">
+    <div class="absolute inset-0 opacity-15 bg-[linear-gradient(rgba(0,245,255,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,245,255,.05)_1px,transparent_1px)] bg-[size:30px_30px]"></div>
+    <div class="absolute top-1/4 left-1/4 w-80 h-80 rounded-full bg-cyberCyan/5 blur-3xl pointer-events-none animate-pulse"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-cyberPurple/5 blur-3xl pointer-events-none animate-pulse"></div>
+    <div class="glassmorphic w-full max-w-md p-8 rounded-xl text-center flex flex-col items-center gap-6 relative z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-xl bg-cyberCyan/10 border-2 border-cyberCyan flex items-center justify-center text-cyberCyan shadow-[0_0_30px_rgba(0,245,255,.4)]">
+                <i data-lucide="shield" class="w-8 h-8"></i>
+            </div>
+            <div class="text-left">
+                <h1 class="text-3xl font-extrabold font-mono tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyberCyan to-white">UCSER</h1>
+                <p class="text-[10px] font-mono text-cyberCyan/70 uppercase tracking-widest">COCKPIT v0.1.0-DEV</p>
+            </div>
+        </div>
+        <div>
+            <p class="text-cyberCyan font-semibold tracking-wider uppercase text-sm">Auditable. Cross-Platform. Secure.</p>
+            <p class="text-slate-400 text-xs mt-1.5 max-w-xs">Universal Cross-Shell Execution Runtime — Control Plane &amp; Security Sentinel</p>
+        </div>
+        <div class="w-full flex gap-2">
+            <button type="button" id="lr-default" onclick="setLoginRole('default')" class="flex-1 text-xs font-bold font-mono py-2 rounded border border-cyberCyan/30 text-cyberCyan bg-cyberCyan/10 hover:bg-cyberCyan hover:text-black transition">DEFAULT</button>
+            <button type="button" id="lr-redteam" onclick="setLoginRole('redteam')" class="flex-1 text-xs font-bold font-mono py-2 rounded border border-cyberRed/30 text-cyberRed bg-cyberRed/10 hover:bg-cyberRed hover:text-white transition">RED TEAM</button>
+            <button type="button" id="lr-auditor" onclick="setLoginRole('auditor')" class="flex-1 text-xs font-bold font-mono py-2 rounded border border-cyberPurple/30 text-cyberPurple bg-cyberPurple/10 hover:bg-cyberPurple hover:text-white transition">AUDITOR</button>
+        </div>
+        <div class="w-full flex flex-col gap-3">
+            <input type="text" value="SENTINEL-ROOT-ACCESS" disabled class="bg-black/40 border border-cyberCyan/20 text-slate-400 rounded-lg px-4 py-3 text-center text-sm font-mono">
+            <button type="button" onclick="login()" class="w-full bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan font-bold py-3 px-6 rounded-lg border border-cyberCyan shadow-[0_0_15px_rgba(0,245,255,.1)] hover:shadow-[0_0_30px_rgba(0,245,255,.5)] transition duration-300 font-mono tracking-wider text-sm">INITIALIZE CONTROL ROOM</button>
+        </div>
+        <p class="text-[10px] text-slate-500 font-mono">SECURE CONTEXT: LOCALHOST ONLY · AES-256 TRANSIT</p>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app-container" class="hidden flex-col min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav id="main-navbar" class="flex items-center justify-between px-4 py-2.5 bg-[#060E1E] border-b border-cyberCyan/15 sticky top-0 z-30 shadow-[0_4px_20px_rgba(0,0,0,.7)]">
+        <div class="flex items-center gap-4">
+            <button type="button" onclick="toggleSidebar()" class="text-slate-400 hover:text-cyberCyan transition p-1" data-tip="Toggle Sidebar (Ctrl+\\)"><i data-lucide="panel-left" class="w-5 h-5"></i></button>
+            <div class="flex items-center gap-2">
+                <i data-lucide="shield" class="w-5 h-5 text-cyberCyan"></i>
+                <span class="font-mono font-bold text-base tracking-wider text-cyberCyan hidden sm:block">UCSER::COCKPIT</span>
+            </div>
+            <div class="relative hidden md:block" onclick="showPalette()">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500"></i>
+                <input type="text" placeholder="Search... (⌘K)" readonly class="bg-black/35 border border-cyberCyan/10 text-slate-300 placeholder-slate-500 rounded-lg pl-9 pr-4 py-1.5 text-xs w-56 cursor-pointer focus:border-cyberCyan/30">
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex gap-3 text-xs font-mono">
+                <span class="flex items-center gap-1.5 text-cyberGreen"><span class="w-2 h-2 rounded-full bg-cyberGreen pulse-dot"></span>SYS::UP</span>
+                <span id="secure-badge" class="flex items-center gap-1.5 text-cyberCyan"><i data-lucide="lock" class="w-3.5 h-3.5"></i>SECURE</span>
+            </div>
+            <!-- Role Toggle -->
+            <div class="relative">
+                <button type="button" id="role-btn" onclick="toggleRoleDD()" class="flex items-center gap-2 text-xs font-bold font-mono px-3 py-1.5 rounded-lg border transition" style="border-color:rgba(0,245,255,.3);color:#00F5FF;background:rgba(0,245,255,.08)">
+                    <i data-lucide="monitor" class="w-3.5 h-3.5" id="role-icon"></i>
+                    <span id="role-lbl">DEFAULT</span>
+                    <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                </button>
+                <div id="role-dd" class="hidden absolute right-0 mt-2 w-52 bg-[#0c1626] border border-cyberCyan/20 rounded-lg shadow-2xl overflow-hidden z-50">
+                    <button type="button" onclick="setRole('default')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-mono font-bold text-cyberCyan hover:bg-cyberCyan/10 transition"><i data-lucide="monitor" class="w-4 h-4"></i>DEFAULT OPERATOR</button>
+                    <button type="button" onclick="setRole('redteam')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-mono font-bold text-cyberRed hover:bg-cyberRed/10 transition"><i data-lucide="crosshair" class="w-4 h-4"></i>RED TEAM MODE</button>
+                    <button type="button" onclick="setRole('auditor')" class="w-full flex items-center gap-3 px-4 py-3 text-xs font-mono font-bold text-cyberPurple hover:bg-cyberPurple/10 transition"><i data-lucide="clipboard-check" class="w-4 h-4"></i>AUDITOR MODE</button>
+                </div>
+            </div>
+            <!-- Notifications -->
+            <button type="button" class="relative text-slate-400 hover:text-cyberCyan transition" onclick="switchView('notifications')" data-tip="Notifications">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="absolute -top-1.5 -right-1.5 bg-cyberRed text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center" id="notif-badge">3</span>
+            </button>
+            <!-- Co-Pilot -->
+            <button type="button" onclick="toggleCopilot()" class="flex items-center gap-1.5 bg-cyberPurple/15 hover:bg-cyberPurple/30 border border-cyberPurple/40 text-cyberPurple text-xs font-bold font-mono px-3 py-1.5 rounded-lg transition shadow-[0_0_10px_rgba(154,51,255,.15)]" data-tip="AI Co-Pilot (Ctrl+B)">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span class="hidden sm:block">SENTINEL AI</span>
+            </button>
+            <!-- Avatar -->
+            <div class="flex items-center gap-2">
+                <div class="text-right hidden lg:block">
+                    <p class="text-xs font-bold font-mono" id="user-name">admin@ucser-root</p>
+                    <p class="text-[9px] text-slate-500 font-mono" id="user-role">ROOT PRIVILEGES</p>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-cyberCyan/20 border border-cyberCyan/40 flex items-center justify-center text-cyberCyan font-bold text-sm">A</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- BREADCRUMB -->
+    <div id="breadcrumb-bar" class="flex items-center gap-2 px-6 py-1.5 text-[11px] font-mono text-slate-500 sticky top-[53px] z-20">
+        <i data-lucide="home" class="w-3 h-3"></i><span class="text-slate-600">/</span>
+        <span class="text-cyberCyan/70">COCKPIT</span><span class="text-slate-600">/</span>
+        <span id="bc-view" class="text-slate-300">Overview</span>
+        <span id="bc-sep" class="text-slate-600 hidden">/</span>
+        <span id="bc-sub" class="text-cyberCyan hidden"></span>
+    </div>
+
+    <div class="flex flex-grow">
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-64 bg-[#060E1E]/95 border-r border-cyberCyan/12 flex flex-col justify-between py-5 sticky top-[82px] h-[calc(100vh-82px)] overflow-y-auto flex-shrink-0 z-20">
+            <div class="flex flex-col px-3 gap-1" id="sidebar-nav"></div>
+            <div class="px-4 flex flex-col gap-2 border-t border-cyberCyan/10 pt-4">
+                <button type="button" onclick="startTour()" class="flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-cyberCyan transition px-1"><i data-lucide="help-circle" class="w-3.5 h-3.5 flex-shrink-0"></i><span class="sidebar-label">Start Tour</span></button>
+                <button type="button" onclick="showShortcuts()" class="flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-cyberCyan transition px-1"><i data-lucide="keyboard" class="w-3.5 h-3.5 flex-shrink-0"></i><span class="sidebar-label">Shortcuts (?)</span></button>
+                <button type="button" onclick="exportWS()" class="flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-cyberCyan transition px-1"><i data-lucide="download" class="w-3.5 h-3.5 flex-shrink-0"></i><span class="sidebar-label">Export Workspace</span></button>
+                <label class="flex items-center gap-2 text-[10px] font-mono text-slate-500 hover:text-cyberCyan transition px-1 cursor-pointer"><i data-lucide="upload" class="w-3.5 h-3.5 flex-shrink-0"></i><span class="sidebar-label">Import Workspace</span><input type="file" accept=".json" class="hidden" onchange="importWS(event)"></label>
+                <p class="text-[9px] font-mono text-slate-600 px-1 mt-1">UCSER v0.1.0-DEV<br><span id="mode-lbl">MODE: DEFAULT</span></p>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="flex-grow p-5 overflow-y-auto" id="main-area">
+
+            <!-- ─── VIEW: OVERVIEW ─── -->
+            <div id="view-overview" class="flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">CONTROL ROOM CONSOLE</h2><p class="text-xs text-slate-400">Trigger test intents and observe live sentinel metrics.</p></div>
+                    <div class="flex gap-2 flex-wrap" id="overview-actions">
+                        <button type="button" onclick="runIntent('safe')" class="bg-cyberGreen/10 border border-cyberGreen text-cyberGreen px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-cyberGreen hover:text-black transition">Run Safe</button>
+                        <button type="button" onclick="runIntent('powershell')" class="bg-cyberCyan/10 border border-cyberCyan text-cyberCyan px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-cyberCyan hover:text-black transition">PowerShell</button>
+                        <button type="button" onclick="runIntent('violation')" class="bg-cyberRed/10 border border-cyberRed text-cyberRed px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-cyberRed hover:text-white transition">Trigger Attack</button>
+                        <button type="button" onclick="runRedTeam()" class="bg-cyberYellow/10 border border-cyberYellow text-cyberYellow px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-cyberYellow hover:text-black transition">Red Team Sim</button>
+                    </div>
+                </div>
+                <!-- Metric Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col justify-between h-32 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-cyberCyan/5 rounded-full -mr-4 -mt-4"></div>
+                        <div class="flex justify-between items-center text-slate-400"><span class="text-[10px] font-bold font-mono uppercase">Running</span><i data-lucide="play" class="w-4 h-4 text-cyberCyan"></i></div>
+                        <div class="flex items-baseline gap-3"><h3 class="text-3xl font-extrabold font-mono text-white" id="m-run">12</h3><span class="w-2.5 h-2.5 rounded-full bg-cyberCyan pulse-dot"></span></div>
+                        <span class="text-[10px] text-slate-500 font-mono">Active threads</span>
+                    </div>
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-slate-400"><span class="text-[10px] font-bold font-mono uppercase">Success Rate</span><i data-lucide="check-circle" class="w-4 h-4 text-cyberGreen"></i></div>
+                        <div class="flex items-center justify-between"><h3 class="text-3xl font-extrabold font-mono text-cyberGreen" id="m-rate">98.7%</h3><svg class="w-20 h-8 text-cyberGreen" viewBox="0 0 100 30"><path fill="none" stroke="currentColor" stroke-width="2" d="M0,25 L15,20 L30,22 L45,15 L60,18 L75,10 L90,5 L100,6"></path></svg></div>
+                        <span class="text-[10px] text-slate-500 font-mono">No policy overrides</span>
+                    </div>
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-slate-400"><span class="text-[10px] font-bold font-mono uppercase">Blocks Today</span><i data-lucide="slash" class="w-4 h-4 text-cyberRed"></i></div>
+                        <div class="flex items-baseline gap-2"><h3 class="text-3xl font-extrabold font-mono text-cyberRed" id="m-blocks">3</h3><span class="text-[10px] font-mono text-cyberRed bg-cyberRed/10 border border-cyberRed/20 px-1.5 py-0.5 rounded font-bold">ALERT</span></div>
+                        <span class="text-[10px] text-slate-500 font-mono">Sandbox rollbacks</span>
+                    </div>
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col justify-between h-32">
+                        <div class="flex justify-between items-center text-slate-400"><span class="text-[10px] font-bold font-mono uppercase">Avg Latency</span><i data-lucide="zap" class="w-4 h-4 text-cyberCyan"></i></div>
+                        <div class="flex justify-between items-center"><h3 class="text-3xl font-extrabold font-mono text-white">184ms</h3><div class="text-[10px] font-mono text-right text-slate-400"><p>Linux:<span class="text-cyberCyan ml-1">142ms</span></p><p>Win:<span class="text-cyberPurple ml-1">231ms</span></p></div></div>
+                        <span class="text-[10px] text-slate-500 font-mono" data-tip="AST verify + sandbox launch">AST + sandbox launch</span>
+                    </div>
+                </div>
+                <!-- Main grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-2 flex flex-col gap-5">
+                        <!-- Console -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <div class="flex justify-between items-center border-b border-cyberCyan/12 pb-2">
+                                <h3 class="font-mono text-sm font-bold text-cyberCyan">LIVE CONTROL CONSOLE</h3>
+                                <div class="flex gap-2 items-center">
+                                    <button type="button" id="log-toggle-btn" onclick="toggleLogScroll()" class="text-[10px] font-mono font-bold px-2 py-1 rounded border border-cyberCyan/20 text-cyberCyan hover:bg-cyberCyan/10 transition">AUTO-SCROLL</button>
+                                    <span class="text-[10px] font-mono text-slate-500" id="log-badge">0 events</span>
+                                </div>
+                            </div>
+                            <div class="bg-black/50 border border-cyberCyan/10 rounded p-3 font-mono text-xs text-slate-300 h-52 overflow-y-auto flex flex-col gap-1.5 log-streaming" id="ov-console">
+                                <div class="flex gap-2"><span class="text-slate-500">[INIT]</span><span class="text-cyberCyan">[INFO]</span><span>UCSER Sentinel online. SQLite connected.</span></div>
+                            </div>
+                        </div>
+                        <!-- Feed -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">LIVE WORKFLOW FEED</h3>
+                            <div class="flex flex-col gap-2.5 max-h-56 overflow-y-auto" id="wf-feed">
+                                <div class="bg-black/30 border border-cyberCyan/15 rounded-lg p-3 flex justify-between items-center">
+                                    <div><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold text-white">FS Integrity Audit</span><span class="text-[9px] bg-cyberGreen/10 text-cyberGreen px-1.5 rounded font-bold">Success</span></div><p class="text-slate-400 text-[10px] mt-1">ID: ucer-893f42c7 · eBPF receipt generated.</p></div>
+                                    <button type="button" onclick="switchView('executions')" class="text-cyberCyan text-[10px] font-bold hover:underline">View →</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-5">
+                        <!-- Health -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">SYSTEM HEALTH &amp; PROVENANCE</h3>
+                            <div class="flex justify-around items-center">
+                                <div class="text-center"><p class="text-[10px] font-mono text-slate-400 mb-2">Linux Node</p><div class="relative w-14 h-14 mx-auto flex items-center justify-center"><svg class="w-14 h-14 -rotate-90" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="4"></circle><circle cx="28" cy="28" r="24" fill="none" stroke="#00FF66" stroke-width="4" stroke-dasharray="150" stroke-dashoffset="18" stroke-linecap="round"></circle></svg><span class="absolute text-[9px] font-bold font-mono text-cyberGreen">ACTIVE</span></div></div>
+                                <div class="text-center"><p class="text-[10px] font-mono text-slate-400 mb-2">Win Node</p><div class="relative w-14 h-14 mx-auto flex items-center justify-center"><svg class="w-14 h-14 -rotate-90" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="4"></circle><circle cx="28" cy="28" r="24" fill="none" stroke="#00F5FF" stroke-width="4" stroke-dasharray="150" stroke-dashoffset="35" stroke-linecap="round"></circle></svg><span class="absolute text-[9px] font-bold font-mono text-cyberCyan">ACTIVE</span></div></div>
+                            </div>
+                            <div class="border-t border-cyberCyan/10 pt-3"><p class="text-[10px] text-slate-400 mb-1" data-tip="ED25519 control plane public key">CP Public Key:</p><div class="bg-black/30 border border-cyberCyan/15 rounded p-2 text-[10px] font-mono text-slate-400 break-all" id="cp-key">98f4-2c7e90890a9b8c7d6e5f4c3b2a1</div></div>
+                        </div>
+                        <!-- Role-specific panel -->
+                        <div id="role-panel" class="glassmorphic rounded-lg p-5 flex flex-col gap-3"></div>
+                        <!-- Deltas -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">MUTATION DELTAS</h3>
+                            <div class="font-mono text-xs flex flex-col gap-1.5 pl-2">
+                                <div class="text-cyberCyan font-bold">/workspace/</div>
+                                <div class="pl-4 flex justify-between border-l border-slate-700"><span>security_policy.py</span><span class="text-cyberGreen text-[10px] font-bold">UNCHANGED</span></div>
+                                <div class="pl-4 flex justify-between border-l border-slate-700"><span>requirements.txt</span><span class="text-cyberGreen text-[10px] font-bold">UNCHANGED</span></div>
+                                <div class="pl-4 flex justify-between border-l border-slate-700"><span>runtime_space/job_1.log</span><span class="text-[10px] font-bold" id="delta-1">🟢 UNCHANGED</span></div>
+                                <div class="pl-4 flex justify-between border-l border-slate-700"><span>var/log/syslog</span><span class="text-[10px] font-bold" id="delta-2">🟢 UNCHANGED</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pinned -->
+                <div id="pinned-row" class="hidden"><h3 class="font-mono text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i data-lucide="pin" class="w-3.5 h-3.5"></i>PINNED</h3><div class="flex gap-3 flex-wrap" id="pinned-box"></div></div>
+            </div>
+
+            <!-- ─── VIEW: BUILDER ─── -->
+            <div id="view-builder" class="hidden flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">WORKFLOW DESIGNER</h2><p class="text-xs text-slate-400">Design DAG pipelines with drag-and-drop nodes.</p></div>
+                    <div class="flex gap-2 flex-wrap items-center">
+                        <div class="flex gap-1 border border-cyberCyan/15 rounded-lg p-1">
+                            <button type="button" onclick="undoCanvas()" class="p-1.5 rounded text-slate-400 hover:text-cyberCyan hover:bg-cyberCyan/10 transition" data-tip="Undo (Ctrl+Z)"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i></button>
+                            <button type="button" onclick="redoCanvas()" class="p-1.5 rounded text-slate-400 hover:text-cyberCyan hover:bg-cyberCyan/10 transition" data-tip="Redo (Ctrl+Y)"><i data-lucide="redo-2" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                        <button type="button" onclick="autoLayout()" class="bg-black/40 border border-cyberCyan/20 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:border-cyberCyan transition">Auto-Layout</button>
+                        <button type="button" onclick="showVersionHistory()" class="bg-black/40 border border-cyberCyan/20 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:border-cyberCyan transition flex items-center gap-1.5"><i data-lucide="git-branch" class="w-3.5 h-3.5"></i>History</button>
+                        <button type="button" onclick="exportWorkflowYAML()" class="bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan border border-cyberCyan px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition">Export YAML</button>
+                        <button type="button" onclick="deployWorkflow()" class="bg-cyberGreen/15 hover:bg-cyberGreen hover:text-black text-cyberGreen border border-cyberGreen px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition">Simulate &amp; Deploy</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+                    <!-- Palette -->
+                    <div class="glassmorphic rounded-lg p-4 flex flex-col gap-3">
+                        <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">NODE PALETTE</h3>
+                        <input type="text" id="pal-filter" placeholder="Filter nodes..." oninput="filterPalette()" class="bg-black/40 border border-cyberCyan/10 text-slate-300 rounded px-3 py-1.5 text-xs">
+                        <div class="flex flex-col gap-3 text-xs" id="palette-wrap">
+                            <details open><summary class="flex items-center justify-between cursor-pointer font-mono font-bold text-[10px] uppercase text-cyberBlue mb-2 select-none"><span class="flex items-center gap-1.5"><i data-lucide="terminal" class="w-3.5 h-3.5"></i>EXECUTION</span><i data-lucide="chevron-down" class="w-3 h-3"></i></summary>
+                                <div class="flex flex-col gap-1">
+                                    <button type="button" onclick="addNode('execution','Shell Task','bash:ls -la')" class="pal-btn bg-cyberBlue/10 hover:bg-cyberBlue/20 border border-cyberBlue text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="terminal" class="w-3 h-3"></i>Shell Task</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('execution','Python Script','python:script.py')" class="pal-btn bg-cyberBlue/10 hover:bg-cyberBlue/20 border border-cyberBlue text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="code" class="w-3 h-3"></i>Python Script</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('execution','Docker Task','docker:run alpine')" class="pal-btn bg-cyberBlue/10 hover:bg-cyberBlue/20 border border-cyberBlue text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="box" class="w-3 h-3"></i>Docker Task</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('execution','PowerShell','powershell:Get-Process')" class="pal-btn bg-cyberBlue/10 hover:bg-cyberBlue/20 border border-cyberBlue text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3 h-3"></i>PowerShell</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                </div>
+                            </details>
+                            <details open><summary class="flex items-center justify-between cursor-pointer font-mono font-bold text-[10px] uppercase text-cyberPurple mb-2 select-none"><span class="flex items-center gap-1.5"><i data-lucide="shield" class="w-3.5 h-3.5"></i>SECURITY</span><i data-lucide="chevron-down" class="w-3 h-3"></i></summary>
+                                <div class="flex flex-col gap-1">
+                                    <button type="button" onclick="addNode('security','Policy Gate','rego:policy')" class="pal-btn bg-cyberPurple/10 hover:bg-cyberPurple/20 border border-cyberPurple text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3 h-3"></i>Policy Gate</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('security','Sandbox Guard','rego:sandbox')" class="pal-btn bg-cyberPurple/10 hover:bg-cyberPurple/20 border border-cyberPurple text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="lock" class="w-3 h-3"></i>Sandbox Guard</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('security','Egress Filter','rego:egress')" class="pal-btn bg-cyberPurple/10 hover:bg-cyberPurple/20 border border-cyberPurple text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="filter" class="w-3 h-3"></i>Egress Filter</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                </div>
+                            </details>
+                            <details open><summary class="flex items-center justify-between cursor-pointer font-mono font-bold text-[10px] uppercase text-cyberGray mb-2 select-none"><span class="flex items-center gap-1.5"><i data-lucide="git-merge" class="w-3.5 h-3.5"></i>CONTROL</span><i data-lucide="chevron-down" class="w-3 h-3"></i></summary>
+                                <div class="flex flex-col gap-1">
+                                    <button type="button" onclick="addNode('control','Approval Gate','')" class="pal-btn bg-slate-700/20 hover:bg-slate-700/40 border border-cyberGray text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="check-square" class="w-3 h-3"></i>Approval Gate</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('control','Notify Gate','bash:echo done')" class="pal-btn bg-slate-700/20 hover:bg-slate-700/40 border border-cyberGray text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="bell" class="w-3 h-3"></i>Notify Gate</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                </div>
+                            </details>
+                            <details open><summary class="flex items-center justify-between cursor-pointer font-mono font-bold text-[10px] uppercase text-cyberYellow mb-2 select-none"><span class="flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i>AI NODES</span><i data-lucide="chevron-down" class="w-3 h-3"></i></summary>
+                                <div class="flex flex-col gap-1">
+                                    <button type="button" onclick="addNode('ai','AI Analyzer','ai:analyze')" class="pal-btn bg-cyberYellow/10 hover:bg-cyberYellow/20 border border-cyberYellow text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="brain" class="w-3 h-3"></i>AI Analyzer</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                    <button type="button" onclick="addNode('ai','Intent Parser','ai:parse')" class="pal-btn bg-cyberYellow/10 hover:bg-cyberYellow/20 border border-cyberYellow text-slate-200 px-3 py-2 rounded transition flex justify-between items-center w-full"><span class="flex items-center gap-1.5"><i data-lucide="message-square" class="w-3 h-3"></i>Intent Parser</span><i data-lucide="plus" class="w-3 h-3"></i></button>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                    <!-- Canvas -->
+                    <div class="lg:col-span-2 flex flex-col gap-3">
+                        <div class="glassmorphic rounded-lg p-4 flex flex-col h-[530px]">
+                            <div class="flex justify-between items-center border-b border-cyberCyan/10 pb-2 mb-2">
+                                <span class="font-mono text-xs text-cyberCyan uppercase">DAG Canvas</span>
+                                <div class="flex gap-1.5 items-center">
+                                    <span class="text-[10px] text-slate-500 font-mono" id="node-count">0 nodes</span>
+                                    <button type="button" onclick="fitCanvas()" data-tip="Fit to Screen" class="bg-black/40 border border-cyberCyan/10 p-1.5 rounded text-slate-400 hover:text-cyberCyan transition"><i data-lucide="maximize-2" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" onclick="zoomC(1)" class="bg-black/40 border border-cyberCyan/10 p-1.5 rounded text-slate-400 hover:text-cyberCyan transition"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" onclick="zoomC(-1)" class="bg-black/40 border border-cyberCyan/10 p-1.5 rounded text-slate-400 hover:text-cyberCyan transition"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i></button>
+                                    <button type="button" onclick="clearCanvas()" class="bg-cyberRed/10 border border-cyberRed/20 text-cyberRed px-2 py-1 rounded text-xs font-bold hover:bg-cyberRed/20 transition">Clear</button>
+                                </div>
+                            </div>
+                            <div class="flex-grow relative overflow-hidden rounded" id="canvas-wrap" style="background:repeating-linear-gradient(0deg,rgba(0,245,255,.015) 0,transparent 1px,transparent 24px),repeating-linear-gradient(90deg,rgba(0,245,255,.015) 0,transparent 1px,transparent 24px)">
+                                <svg id="c-svg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:1"><defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="rgba(0,245,255,.45)"/></marker></defs><g id="c-edges"></g></svg>
+                                <div id="c-nodes" class="absolute inset-0" style="z-index:2"></div>
+                                <div id="c-empty" class="absolute inset-0 flex flex-col items-center justify-center text-slate-600 pointer-events-none"><i data-lucide="git-branch" class="w-12 h-12 mb-3 opacity-30"></i><p class="text-xs font-mono">Drag nodes from the palette to build your workflow</p></div>
+                                <div class="absolute bottom-2 right-2 w-28 h-20 bg-black/70 border border-cyberCyan/20 rounded overflow-hidden" id="minimap-wrap" style="z-index:10"><canvas id="minimap" width="112" height="80" class="w-full h-full"></canvas><div class="absolute inset-0 flex items-center justify-center text-[9px] font-mono text-slate-600" id="mm-empty">minimap</div></div>
+                            </div>
+                            <div class="flex gap-2 mt-2">
+                                <input type="text" id="ai-prompt" placeholder="Generate DAG from AI prompt..." class="flex-grow bg-black/60 border border-cyberCyan/20 text-slate-200 text-xs px-3 py-2 rounded-lg focus:border-cyberCyan">
+                                <button type="button" onclick="aiGenerateDAG()" class="bg-cyberPurple hover:bg-cyberPurple/80 text-white p-2 rounded-lg transition"><i data-lucide="sparkles" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Props + Rego -->
+                    <div class="flex flex-col gap-4">
+                        <div class="glassmorphic rounded-lg p-4 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">PROPERTIES</h3>
+                            <div id="props-pane" class="text-xs"><p class="text-slate-500 font-mono">Click a node to edit.</p></div>
+                        </div>
+                        <div class="glassmorphic rounded-lg p-4 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">REGO VALIDATOR</h3>
+                            <div class="flex flex-col gap-2 text-xs font-mono">
+                                <div class="flex justify-between items-center"><span class="text-slate-400">Compliance:</span><span class="text-cyberGreen font-bold" id="rego-score">100% SECURE</span></div>
+                                <div class="border border-cyberCyan/12 rounded bg-black/40 p-2.5"><p class="text-cyberGreen font-semibold">✓ No forbidden cmdlets</p><p class="text-cyberGreen font-semibold">✓ Approved sandbox namespace</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── VIEW: EXECUTIONS ─── -->
+            <div id="view-executions" class="hidden flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">WORKFLOW EXECUTION LOG</h2><p class="text-xs text-slate-400">Audited state changes for executing jobs.</p></div>
+                    <button type="button" onclick="exportProof()" class="bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan border border-cyberCyan px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition flex items-center gap-2"><i data-lucide="download" class="w-3.5 h-3.5"></i>Export Proof</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-2 flex flex-col gap-5">
+                        <!-- Gantt -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">EXECUTION GANTT TIMELINE <span class="text-[10px] text-slate-500 font-normal">(click step → jump to logs)</span></h3>
+                            <div class="flex flex-col gap-3 font-mono text-xs" id="gantt">
+                                <div class="flex items-center gap-3 gantt-bar" onclick="jumpToStep('step1')" data-step="step1"><span class="w-24 text-slate-400 flex-shrink-0">Step 1: Scan</span><div class="flex-grow bg-cyberBlue/10 border border-cyberBlue/40 h-5 rounded relative hover:border-cyberBlue transition"><div class="absolute inset-y-0 left-0 bg-cyberBlue/40 w-3/4 rounded-l"></div><span class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white">45ms</span></div><span class="text-cyberGreen">✓</span></div>
+                                <div class="flex items-center gap-3 gantt-bar" onclick="jumpToStep('step2')" data-step="step2"><span class="w-24 text-slate-400 flex-shrink-0">Step 2: Audit</span><div class="flex-grow bg-cyberPurple/10 border border-cyberPurple/40 h-5 rounded relative hover:border-cyberPurple transition"><div class="absolute inset-y-0 left-[75%] bg-cyberPurple/40 w-[20%] rounded-l"></div><span class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white">12ms</span></div><span class="text-cyberGreen">✓</span></div>
+                                <div class="flex items-center gap-3 gantt-bar" onclick="jumpToStep('step3')" data-step="step3"><span class="w-24 text-slate-400 flex-shrink-0">Step 3: Sign</span><div class="flex-grow bg-cyberGreen/10 border border-cyberGreen/40 h-5 rounded relative hover:border-cyberGreen transition"><div class="absolute inset-y-0 left-[95%] bg-cyberGreen/40 w-[5%] rounded-l"></div><span class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-white">3ms</span></div><span class="text-cyberGreen">✓</span></div>
+                            </div>
+                        </div>
+                        <!-- Exec Console -->
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <div class="flex justify-between items-center border-b border-cyberCyan/12 pb-2">
+                                <h3 class="font-mono text-sm font-bold text-cyberCyan">EXECUTION LOGS</h3>
+                                <div class="flex gap-2 items-center">
+                                    <input type="text" id="log-filter" placeholder="Filter..." oninput="filterLogs()" class="bg-black/30 border border-cyberCyan/10 rounded px-2.5 py-1 text-xs w-36 text-slate-300">
+                                    <button type="button" id="exec-scroll-btn" onclick="toggleExecScroll()" class="text-[10px] font-mono font-bold px-2 py-1 rounded border border-cyberCyan/20 text-cyberCyan hover:bg-cyberCyan/10 transition">AUTO</button>
+                                </div>
+                            </div>
+                            <div class="bg-black/50 border border-cyberCyan/10 rounded p-3 font-mono text-xs text-slate-300 h-64 overflow-y-auto flex flex-col gap-1.5" id="exec-console">
+                                <div class="flex gap-2" data-step="step1"><span class="text-slate-500">[INFO]</span><span>Witness observable subsystem initialized.</span></div>
+                                <div class="flex gap-2" data-step="step1"><span class="text-cyberCyan">[SCAN]</span><span>Scanning workspace files...</span></div>
+                                <div class="flex gap-2" data-step="step2"><span class="text-cyberPurple">[AUDIT]</span><span>Generating SHA-256 manifest...</span></div>
+                                <div class="flex gap-2" data-step="step3"><span class="text-cyberGreen">[SIGN]</span><span>ED25519 signature applied. Receipt committed.</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Inspector -->
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                        <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">EXECUTION INSPECTOR</h3>
+                        <div class="flex flex-col gap-4 text-xs font-mono" id="inspector">
+                            <div><p class="text-slate-400">Status:</p><div class="bg-cyberGreen/10 border border-cyberGreen/20 text-cyberGreen p-2.5 rounded mt-1 flex justify-between items-center font-bold"><span>VERIFIED COMPLIANT</span><i data-lucide="check-circle" class="w-4 h-4"></i></div></div>
+                            <div><p class="text-slate-400">Exit Status:</p><p class="text-white mt-1">Code: 0 (SUCCESS)</p></div>
+                            <div><p class="text-slate-400">Duration:</p><p class="text-cyberCyan mt-1">60ms total</p></div>
+                            <div><p class="text-slate-400" data-tip="SHA-256 hash of all ordered execution events">Merkle Root Hash:</p><p class="text-cyberCyan break-all mt-1 text-[10px]">abf984be05c2ab4aff4504b01829a3be2d98165dfa641e0221e5ad52</p></div>
+                            <div><p class="text-slate-400" data-tip="ED25519 public key of runtime witness">Witness Pub Key:</p><p class="text-slate-400 break-all mt-1 text-[10px]">e31345d3479b741e09bad782fce1173abddad05dee</p></div>
+                            <div><p class="text-slate-400">Signatures:</p><p class="text-cyberGreen mt-1">✓ Control Plane valid</p><p class="text-cyberGreen">✓ Local Witness valid</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── VIEW: POLICIES ─── -->
+            <div id="view-policies" class="hidden flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">POLICIES &amp; COMPLIANCE</h2><p class="text-xs text-slate-400">Manage Rego security policies and run compliance tests.</p></div>
+                    <button type="button" onclick="exportPolicyPDF()" class="bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan border border-cyberCyan px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition flex items-center gap-2"><i data-lucide="file-text" class="w-3.5 h-3.5"></i>Export PDF</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-2 flex flex-col gap-5">
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                            <div class="flex justify-between items-center border-b border-cyberCyan/12 pb-2">
+                                <h3 class="font-mono text-sm font-bold text-cyberCyan">ACTIVE POLICIES</h3>
+                                <div class="flex gap-2 text-[10px] font-mono"><span class="text-cyberGreen">v2.1.0</span><button type="button" onclick="showPolicyDiff()" class="text-cyberCyan hover:underline">Show Diff</button></div>
+                            </div>
+                            <table class="w-full text-left text-xs font-mono"><thead><tr class="border-b border-cyberCyan/10 text-slate-400"><th class="py-2">POLICY</th><th class="py-2">FRAMEWORK</th><th class="py-2">VER</th><th class="py-2">STATUS</th></tr></thead><tbody>
+                                <tr class="border-b border-cyberCyan/5 cursor-pointer" onclick="loadPolicy('egress_filter')"><td class="py-3 font-semibold">egress_filter.rego</td><td>NIST 800-53</td><td class="text-slate-500">v1.3</td><td><span class="bg-cyberGreen/10 border border-cyberGreen/20 text-cyberGreen text-[9px] px-1.5 py-0.5 rounded font-bold">ACTIVE</span></td></tr>
+                                <tr class="border-b border-cyberCyan/5 cursor-pointer" onclick="loadPolicy('fs_integrity')"><td class="py-3 font-semibold">fs_integrity.rego</td><td>ISO 27001</td><td class="text-slate-500">v2.0</td><td><span class="bg-cyberGreen/10 border border-cyberGreen/20 text-cyberGreen text-[9px] px-1.5 py-0.5 rounded font-bold">ACTIVE</span></td></tr>
+                                <tr class="border-b border-cyberCyan/5 cursor-pointer" onclick="loadPolicy('credentials_leak')"><td class="py-3 font-semibold">credentials_leak.rego</td><td>HIPAA</td><td class="text-slate-500">v1.0</td><td><span class="bg-cyberGreen/10 border border-cyberGreen/20 text-cyberGreen text-[9px] px-1.5 py-0.5 rounded font-bold">ACTIVE</span></td></tr>
+                            </tbody></table>
+                        </div>
+                        <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3">
+                            <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">COVERAGE HEATMAP</h3>
+                            <div class="grid grid-cols-6 gap-2 text-center text-[10px] font-mono py-2">
+                                <div class="bg-cyberGreen/20 border border-cyberGreen text-cyberGreen p-2.5 rounded" data-tip="NIST SC-7 Boundary Protection">NIST.FS</div>
+                                <div class="bg-cyberGreen/20 border border-cyberGreen text-cyberGreen p-2.5 rounded" data-tip="Network Access Controls">NIST.NET</div>
+                                <div class="bg-cyberGreen/20 border border-cyberGreen text-cyberGreen p-2.5 rounded" data-tip="HIPAA §164.312 Security">HIPAA.SEC</div>
+                                <div class="bg-cyberGreen/20 border border-cyberGreen text-cyberGreen p-2.5 rounded" data-tip="ISO 27001 A.9 Access Control">ISO.ACCESS</div>
+                                <div class="bg-cyberYellow/20 border border-cyberYellow text-cyberYellow p-2.5 rounded" data-tip="Partial: execution auditing">ISO.EXEC</div>
+                                <div class="bg-cyberRed/20 border border-cyberRed text-cyberRed p-2.5 rounded" data-tip="Not yet implemented">SOC2.AUD</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Playground -->
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                        <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">REGO PLAYGROUND</h3>
+                        <div class="flex flex-col gap-2 text-xs font-mono">
+                            <div><p class="text-slate-400 mb-1">Policy:</p><select id="rego-sel" class="w-full bg-black/40 border border-cyberCyan/20 rounded p-2 text-slate-200"><option value="fs_integrity">fs_integrity.rego</option><option value="egress_filter">egress_filter.rego</option><option value="credentials_leak">credentials_leak.rego</option></select></div>
+                            <div><p class="text-slate-400 mb-1">Input JSON:</p><textarea id="rego-inp" rows="5" class="w-full bg-black/40 border border-cyberCyan/20 rounded p-2 text-slate-200 text-[10px] font-mono resize-y">{"command":"rm -rf /var/log","user":"guest"}</textarea></div>
+                            <button type="button" onclick="runRego()" class="w-full bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan font-bold py-2 rounded border border-cyberCyan transition">RUN EVALUATION</button>
+                            <div class="border border-cyberCyan/12 rounded bg-black/30 p-2.5"><p class="text-slate-400">Decision:</p><div id="rego-out" class="text-cyberRed font-bold mt-1 uppercase">DENY (ISO 27001 Blocked)</div></div>
+                            <!-- Batch test -->
+                            <div class="border-t border-cyberCyan/10 pt-3 flex flex-col gap-2">
+                                <div class="flex justify-between items-center"><p class="text-slate-400 uppercase text-[10px]">Batch Test Mode</p><button type="button" onclick="addBatch()" class="text-cyberCyan text-[10px] hover:underline">+ Add Case</button></div>
+                                <div id="batch-cases" class="flex flex-col gap-1.5 max-h-28 overflow-y-auto"></div>
+                                <button type="button" id="batch-run-btn" onclick="runBatch()" class="hidden w-full bg-cyberGreen/15 hover:bg-cyberGreen hover:text-black text-cyberGreen font-bold py-1.5 rounded border border-cyberGreen transition text-[10px]">RUN ALL TESTS</button>
+                                <div id="batch-res" class="hidden flex flex-col gap-1 text-[10px]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── VIEW: EXPLORER ─── -->
+            <div id="view-explorer" class="hidden flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">SECURITY EXPLORER &amp; AUDITOR</h2><p class="text-xs text-slate-400">Search tamper-proof audit trails. Generate cryptographic receipts.</p></div>
+                    <button type="button" onclick="fullAuditReport()" class="bg-cyberGreen/15 hover:bg-cyberGreen hover:text-black text-cyberGreen border border-cyberGreen px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition flex items-center gap-2"><i data-lucide="file-search" class="w-3.5 h-3.5"></i>Full Audit Report</button>
+                </div>
+                <!-- Filters -->
+                <div class="glassmorphic rounded-lg p-4 flex gap-3 flex-wrap items-end">
+                    <div class="flex flex-col gap-1"><label class="text-[10px] font-mono text-slate-400">From</label><input type="date" id="f-from" class="bg-black/40 border border-cyberCyan/20 rounded px-2 py-1.5 text-xs text-slate-300"></div>
+                    <div class="flex flex-col gap-1"><label class="text-[10px] font-mono text-slate-400">To</label><input type="date" id="f-to" class="bg-black/40 border border-cyberCyan/20 rounded px-2 py-1.5 text-xs text-slate-300"></div>
+                    <div class="flex flex-col gap-1"><label class="text-[10px] font-mono text-slate-400">Adapter</label><select id="f-adapter" class="bg-black/40 border border-cyberCyan/20 rounded px-2 py-1.5 text-xs text-slate-300"><option value="">All</option><option value="bash">Linux/Bash</option><option value="powershell">Win/PS</option><option value="docker">Docker</option></select></div>
+                    <div class="flex flex-col gap-1"><label class="text-[10px] font-mono text-slate-400">Severity</label><select id="f-sev" class="bg-black/40 border border-cyberCyan/20 rounded px-2 py-1.5 text-xs text-slate-300"><option value="">All</option><option value="high">High</option><option value="warn">Warn</option><option value="info">Info</option></select></div>
+                    <div class="flex flex-col gap-1"><label class="text-[10px] font-mono text-slate-400">Keyword</label><input type="text" id="f-kw" placeholder="intent keyword..." class="bg-black/40 border border-cyberCyan/20 rounded px-2 py-1.5 text-xs text-slate-300 w-36"></div>
+                    <button type="button" onclick="applyFilters()" class="bg-cyberCyan/10 border border-cyberCyan text-cyberCyan text-xs px-3 py-1.5 rounded font-bold uppercase hover:bg-cyberCyan hover:text-black transition">Apply</button>
+                    <button type="button" onclick="clearFilters()" class="bg-black/40 border border-cyberCyan/10 text-slate-400 text-xs px-3 py-1.5 rounded hover:text-cyberCyan transition">Clear</button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div class="lg:col-span-2 glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                        <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">CHAIN-OF-CUSTODY TIMELINE</h3>
+                        <div class="flex flex-col gap-3 font-mono text-xs max-h-96 overflow-y-auto" id="timeline">
+                            <div class="border border-cyberCyan/10 rounded-lg overflow-hidden tl-entry" data-sev="info" data-adp="bash">
+                                <button type="button" onclick="toggleTL(this)" class="w-full flex gap-3 items-center p-3 hover:bg-cyberCyan/5 transition text-left"><div class="text-cyberGreen flex-shrink-0"><i data-lucide="check-circle" class="w-4 h-4"></i></div><div class="flex-grow"><div class="flex justify-between font-bold"><span>FS Integrity Audit</span><span class="text-slate-500">2026-06-23 01:44:21</span></div><p class="text-slate-400 text-[10px] mt-0.5">Witness verified. Sandbox promoted.</p></div><i data-lucide="chevron-down" class="w-3.5 h-3.5 flex-shrink-0 text-slate-500 tl-arrow"></i></button>
+                                <div class="tl-detail border-t border-cyberCyan/10 p-3 bg-black/30 flex flex-col gap-2"><div class="grid grid-cols-2 gap-2 text-[10px]"><div><span class="text-slate-500">ID: </span><span class="text-cyberCyan">ucer-893f42c7</span></div><div><span class="text-slate-500">Adapter: </span><span>bash</span></div><div><span class="text-slate-500">Exit: </span><span class="text-cyberGreen">0 SUCCESS</span></div><div><span class="text-slate-500">Duration: </span><span>60ms</span></div></div><button type="button" onclick="genProofFor('ucer-893f42c7')" class="text-[10px] text-cyberCyan hover:underline text-left">Generate Proof →</button></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glassmorphic rounded-lg p-5 flex flex-col gap-4">
+                        <h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">PROOF GENERATOR</h3>
+                        <p class="text-xs text-slate-400">Generate signed compliance receipts for auditing bodies.</p>
+                        <div class="flex flex-col gap-3 text-xs font-mono">
+                            <input type="text" id="proof-id" value="ucer-893f42c7" placeholder="Command Run ID" class="bg-black/40 border border-cyberCyan/20 rounded p-2 text-slate-200">
+                            <button type="button" onclick="genProof()" class="w-full bg-cyberCyan hover:bg-cyberCyan/80 text-black font-bold py-2 rounded transition">GENERATE RECEIPT</button>
+                            <div id="proof-out" class="hidden border border-cyberCyan/15 rounded bg-black/40 p-3 flex flex-col gap-2">
+                                <p class="text-cyberGreen font-bold">✓ PROOF VALIDATED</p>
+                                <p class="text-[10px] text-slate-400">Authority Sig:</p>
+                                <div class="text-[9px] break-all text-slate-300" id="proof-sig">sig_valid_8932479e...</div>
+                                <p class="text-[10px]">Chain: <span class="text-cyberCyan">immutable-v1.0</span></p>
+                                <button type="button" onclick="window.print()" class="bg-cyberGreen/15 border border-cyberGreen/30 text-cyberGreen px-3 py-1.5 rounded font-bold uppercase hover:bg-cyberGreen hover:text-black transition text-[10px] mt-1">Download PDF Proof</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── VIEW: NOTIFICATIONS ─── -->
+            <div id="view-notifications" class="hidden flex flex-col gap-5">
+                <div class="flex justify-between items-center border border-cyberCyan/20 rounded-lg p-4 bg-panelBg flex-wrap gap-3">
+                    <div><h2 class="text-lg font-bold font-mono text-cyberCyan">NOTIFICATIONS CENTER</h2><p class="text-xs text-slate-400">Policy blocks, completions, and red team events.</p></div>
+                    <button type="button" onclick="markAllRead()" class="bg-black/40 border border-cyberCyan/20 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:text-cyberCyan hover:border-cyberCyan transition">Mark All Read</button>
+                </div>
+                <div class="flex gap-2 flex-wrap" id="notif-filters">
+                    <button type="button" data-nf="all" onclick="filterNotif('all')" class="nf-btn text-xs font-bold font-mono px-3 py-1.5 rounded-lg border border-cyberCyan text-cyberCyan bg-cyberCyan/10">ALL</button>
+                    <button type="button" data-nf="alert" onclick="filterNotif('alert')" class="nf-btn text-xs font-bold font-mono px-3 py-1.5 rounded-lg border border-cyberRed/30 text-cyberRed hover:bg-cyberRed/10 transition">POLICY BLOCKS</button>
+                    <button type="button" data-nf="success" onclick="filterNotif('success')" class="nf-btn text-xs font-bold font-mono px-3 py-1.5 rounded-lg border border-cyberGreen/30 text-cyberGreen hover:bg-cyberGreen/10 transition">COMPLETIONS</button>
+                    <button type="button" data-nf="warn" onclick="filterNotif('warn')" class="nf-btn text-xs font-bold font-mono px-3 py-1.5 rounded-lg border border-cyberYellow/30 text-cyberYellow hover:bg-cyberYellow/10 transition">RED TEAM</button>
+                </div>
+                <div class="glassmorphic rounded-lg p-5 flex flex-col gap-3" id="notif-list"></div>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<!-- ═══════════ AI CO-PILOT ═══════════ -->
+<div id="copilot-panel" class="fixed top-0 right-0 h-full w-96 bg-[#060E1E] border-l border-cyberPurple/30 z-40 flex flex-col shadow-[-8px_0_32px_rgba(154,51,255,.18)]">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-cyberPurple/20 bg-[#080F20]">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-cyberPurple/20 border border-cyberPurple/40 flex items-center justify-center"><i data-lucide="sparkles" class="w-4 h-4 text-cyberPurple"></i></div>
+            <div><p class="text-sm font-bold font-mono text-cyberPurple">SENTINEL AI</p><p class="text-[9px] font-mono text-slate-500">claude-opus-4-5 · BlacklistedProxy</p></div>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" onclick="clearCopilot()" data-tip="Clear History" class="text-slate-500 hover:text-cyberPurple transition"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+            <button type="button" onclick="toggleCopilot()" class="text-slate-500 hover:text-cyberPurple transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+    </div>
+    <div class="px-4 py-2 border-b border-cyberPurple/10 flex items-center gap-2"><span class="text-[10px] font-mono text-slate-500">Context:</span><span class="text-[10px] font-mono text-cyberPurple bg-cyberPurple/10 px-1.5 py-0.5 rounded" id="copilot-ctx">Overview</span></div>
+    <div class="flex-grow overflow-y-auto p-4 flex flex-col gap-3" id="copilot-msgs">
+        <div class="flex gap-2.5"><div class="w-6 h-6 rounded-full bg-cyberPurple/20 flex items-center justify-center flex-shrink-0 mt-0.5"><i data-lucide="sparkles" class="w-3 h-3 text-cyberPurple"></i></div><div class="glassmorphic rounded-lg rounded-tl-none p-3 text-xs text-slate-300 max-w-[85%]" style="border-color:rgba(154,51,255,.2)"><p>Welcome to <span class="text-cyberPurple font-bold">SENTINEL AI</span> — your UCSER security co-pilot powered by claude-opus-4-5.</p><ul class="mt-2 text-slate-400 flex flex-col gap-0.5"><li>• Explain UCER records &amp; audit trails</li><li>• Debug Rego policy violations</li><li>• Suggest workflow optimizations</li><li>• Analyze security events</li></ul></div></div>
+    </div>
+    <div class="p-4 border-t border-cyberPurple/20">
+        <div class="flex gap-2"><input type="text" id="copilot-in" placeholder="Ask SENTINEL AI..." class="flex-grow bg-black/60 border border-cyberPurple/30 text-slate-200 text-xs px-3 py-2.5 rounded-lg focus:border-cyberPurple" onkeydown="if(event.key==='Enter')sendMsg()"><button type="button" onclick="sendMsg()" class="bg-cyberPurple hover:bg-cyberPurple/80 text-white p-2.5 rounded-lg transition"><i data-lucide="send" class="w-4 h-4"></i></button></div>
+        <p class="text-[9px] text-slate-600 font-mono mt-1.5 text-center">BlacklistedAIProxy · localhost:3000/kiro</p>
+    </div>
+</div>
+
+<!-- ═══════════ COMMAND PALETTE ═══════════ -->
+<div id="palette" class="hidden fixed inset-0 z-50 flex items-start justify-center bg-black/80 p-10 pt-24">
+    <div class="glassmorphic w-full max-w-xl p-5 rounded-xl flex flex-col gap-4">
+        <div class="flex justify-between items-center border-b border-cyberCyan/10 pb-2"><span class="font-mono text-xs text-cyberCyan uppercase">⌘ COMMAND PALETTE</span><span class="text-xs text-slate-500 font-mono">ESC to close</span></div>
+        <input type="text" id="pal-in" placeholder="Search commands, views, workflows..." oninput="searchPalette()" class="bg-black/40 border border-cyberCyan/20 rounded px-4 py-2.5 text-slate-200 text-sm focus:border-cyberCyan font-mono" autofocus>
+        <div class="flex flex-col gap-1.5 font-mono text-xs max-h-64 overflow-y-auto" id="pal-results"></div>
+    </div>
+</div>
+
+<!-- ═══════════ SHORTCUTS MODAL ═══════════ -->
+<div id="shortcuts-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
+    <div class="glassmorphic w-full max-w-lg p-6 rounded-xl flex flex-col gap-5">
+        <div class="flex justify-between items-center"><h3 class="font-mono font-bold text-cyberCyan text-lg">KEYBOARD SHORTCUTS</h3><button type="button" onclick="closeModal('shortcuts-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+        <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Global Search</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Ctrl+K</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Save Workflow</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Ctrl+S</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Deploy</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Ctrl+Enter</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">AI Co-Pilot</span><kbd class="bg-cyberPurple/15 border border-cyberPurple/30 text-cyberPurple px-2 py-0.5 rounded text-[10px]">Ctrl+B</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Undo Canvas</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Ctrl+Z</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Redo Canvas</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Ctrl+Y</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">Close / Escape</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">Esc</kbd></div>
+            <div class="flex justify-between items-center p-2.5 bg-black/30 rounded border border-cyberCyan/10"><span class="text-slate-300">This Modal</span><kbd class="bg-cyberCyan/15 border border-cyberCyan/30 text-cyberCyan px-2 py-0.5 rounded text-[10px]">?</kbd></div>
+        </div>
+        <button type="button" onclick="closeModal('shortcuts-modal')" class="w-full bg-cyberCyan/15 hover:bg-cyberCyan hover:text-black text-cyberCyan border border-cyberCyan py-2 rounded font-bold font-mono uppercase transition">GOT IT</button>
+    </div>
+</div>
+
+<!-- ═══════════ VERSION HISTORY ═══════════ -->
+<div id="ver-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
+    <div class="glassmorphic w-full max-w-2xl p-6 rounded-xl flex flex-col gap-5 max-h-[80vh] overflow-hidden">
+        <div class="flex justify-between items-center"><h3 class="font-mono font-bold text-cyberCyan text-lg">VERSION HISTORY</h3><button type="button" onclick="closeModal('ver-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+        <div class="flex gap-5 flex-grow min-h-0 overflow-hidden">
+            <div class="w-48 flex flex-col gap-2 overflow-y-auto" id="ver-list"></div>
+            <div class="flex-grow bg-black/40 border border-cyberCyan/15 rounded p-3 overflow-y-auto font-mono text-xs" id="ver-diff"><p class="text-slate-500">Select a version to compare.</p></div>
+        </div>
+        <div class="flex gap-3"><button type="button" onclick="restoreVer()" class="bg-cyberGreen/15 hover:bg-cyberGreen hover:text-black text-cyberGreen border border-cyberGreen px-4 py-2 rounded font-bold font-mono uppercase transition text-xs">Restore Selected</button><button type="button" onclick="closeModal('ver-modal')" class="bg-black/40 border border-cyberCyan/20 text-slate-300 px-4 py-2 rounded text-xs font-mono hover:text-cyberCyan transition">Close</button></div>
+    </div>
+</div>
+
+<!-- ═══════════ POLICY DIFF ═══════════ -->
+<div id="diff-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
+    <div class="glassmorphic w-full max-w-3xl p-6 rounded-xl flex flex-col gap-5 max-h-[80vh]">
+        <div class="flex justify-between items-center"><h3 class="font-mono font-bold text-cyberCyan text-lg">POLICY DIFF VIEWER</h3><button type="button" onclick="closeModal('diff-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+        <div class="grid grid-cols-2 gap-4 flex-grow overflow-hidden">
+            <div class="flex flex-col gap-2"><p class="text-[10px] font-mono text-slate-400">v1.3 (Previous)</p><div class="bg-black/40 border border-cyberCyan/15 rounded p-3 overflow-y-auto font-mono text-[10px] flex-grow"><div class="diff-rem">package egress_filter</div><div class="pl-2">default allow = false</div><div class="diff-rem">allow { input.network == "internal" }</div></div></div>
+            <div class="flex flex-col gap-2"><p class="text-[10px] font-mono text-slate-400">v2.0 (Current)</p><div class="bg-black/40 border border-cyberCyan/15 rounded p-3 overflow-y-auto font-mono text-[10px] flex-grow"><div class="diff-add">package egress_filter</div><div class="pl-2">default allow = false</div><div class="diff-add">allow { input.network == "internal"; input.user != "guest" }</div><div class="diff-add">deny_reason := "Blocked" { not allow }</div></div></div>
+        </div>
+        <button type="button" onclick="closeModal('diff-modal')" class="bg-black/40 border border-cyberCyan/20 text-slate-300 px-4 py-2 rounded text-xs font-mono self-end hover:text-cyberCyan transition">Close</button>
+    </div>
+</div>
+
+<!-- ═══════════ ONBOARDING TOUR ═══════════ -->
+<div id="tour-overlay" class="hidden fixed inset-0 z-[9999]" onclick="handleTourBackdrop(event)">
+    <div id="tour-spot" class="absolute" style="border:2px solid #00F5FF;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.72),0 0 24px rgba(0,245,255,.4);transition:all .4s cubic-bezier(.4,0,.2,1);pointer-events:none;z-index:9998;display:none"></div>
+    <div id="tour-card" class="absolute z-[10000] bg-[#060E1E] border border-cyberCyan rounded-xl p-5 w-80 shadow-[0_0_30px_rgba(0,245,255,.2)]" style="pointer-events:all">
+        <div class="flex justify-between items-center mb-3"><span class="text-[10px] font-mono text-cyberCyan/70" id="tour-step-lbl">STEP 1 OF 6</span><button type="button" onclick="endTour()" class="text-slate-500 hover:text-slate-300 text-[10px] font-mono">Skip Tour</button></div>
+        <h4 class="font-bold font-mono text-cyberCyan text-sm mb-2" id="tour-title">Welcome!</h4>
+        <p class="text-xs text-slate-300 mb-4" id="tour-desc">Let's explore the UCSER Cockpit.</p>
+        <div class="flex justify-between items-center"><div class="flex gap-1" id="tour-dots"></div><button type="button" onclick="nextTour()" class="bg-cyberCyan hover:bg-cyberCyan/80 text-black text-xs font-bold px-4 py-2 rounded-lg font-mono transition" id="tour-next-btn">NEXT →</button></div>
+    </div>
+</div>
+
+<!-- ═══════════ TOAST ═══════════ -->
+<div id="toasts" class="fixed bottom-6 right-6 z-[9998] flex flex-col gap-2 max-w-xs"></div>
+
+<!-- ═══════════════════════════════════ JAVASCRIPT ═══════════════════════════════════ -->
+<script>
+// ━━━ GLOBALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+lucide.createIcons();
+let curView='overview', curRole='default', loginRole='default';
+let sidebarColl=false, copilotOpen=false;
+let logAutoScroll=true, execAutoScroll=true, logCnt=0;
+
+// ━━━ SIDEBAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const NAV=[
+  {id:'overview',  label:'Overview',         icon:'gauge'},
+  {id:'builder',   label:'Workflow Builder',  icon:'git-branch'},
+  {id:'executions',label:'Run Detail Log',    icon:'activity'},
+  {id:'policies',  label:'Policies Center',   icon:'shield-check'},
+  {id:'explorer',  label:'Security Explorer', icon:'database'},
+  {id:'notifications',label:'Notifications',  icon:'bell'},
+];
+function buildSidebar(){
+    document.getElementById('sidebar-nav').innerHTML=NAV.map(n=>`
+        <button type="button" onclick="switchView('${n.id}')" id="nav-${n.id}"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-cyberCyan hover:bg-cyberCyan/5 transition w-full text-left">
+            <i data-lucide="${n.icon}" class="w-4 h-4 flex-shrink-0"></i>
+            <span class="sidebar-label">${n.label}</span>
+            ${n.id==='notifications'?`<span class="sidebar-label ml-auto text-[9px] bg-cyberRed text-white rounded-full w-4 h-4 flex items-center justify-center font-bold" id="notif-badge-s">!</span>`:''}
+        </button>`).join('');
+    lucide.createIcons();
+}
+
+const VIEWS=['overview','builder','executions','policies','explorer','notifications'];
+const BC={overview:'Overview',builder:'Workflow Builder',executions:'Run Detail Log',policies:'Policies Center',explorer:'Security Explorer',notifications:'Notifications'};
+
+function switchView(v){
+    VIEWS.forEach(id=>{
+        document.getElementById(`view-${id}`)?.classList.add('hidden');
+        const n=document.getElementById(`nav-${id}`);
+        if(n)n.className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-400 hover:text-cyberCyan hover:bg-cyberCyan/5 transition w-full text-left';
+    });
+    document.getElementById(`view-${v}`)?.classList.remove('hidden');
+    const nb=document.getElementById(`nav-${v}`);
+    if(nb)nb.className='flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-cyberCyan bg-cyberCyan/10 border-l-2 border-cyberCyan transition w-full text-left';
+    curView=v;
+    document.getElementById('bc-view').textContent=BC[v]||v;
+    document.getElementById('bc-sep').classList.add('hidden');
+    document.getElementById('bc-sub').classList.add('hidden');
+    document.getElementById('copilot-ctx').textContent=BC[v]||v;
+    document.getElementById('role-dd').classList.add('hidden');
+    if(v==='notifications')buildNotifications();
+}
+function setBCSub(t){document.getElementById('bc-sep').classList.remove('hidden');const s=document.getElementById('bc-sub');s.classList.remove('hidden');s.textContent=t;}
+function toggleSidebar(){sidebarColl=!sidebarColl;const s=document.getElementById('sidebar');s.classList.toggle('collapsed',sidebarColl);s.style.width=sidebarColl?'56px':'16rem';}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+// ━━━ LOGIN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function setLoginRole(r){
+    loginRole=r;
+    ['default','redteam','auditor'].forEach(x=>{
+        const b=document.getElementById(`lr-${x}`);
+        if(b){b.classList.toggle('ring-2',x===r);b.classList.toggle(x==='default'?'ring-cyberCyan':x==='redteam'?'ring-cyberRed':'ring-cyberPurple',x===r);}
+    });
+}
+function login(){
+    document.getElementById('login-screen').classList.add('hidden');
+    const app=document.getElementById('app-container');
+    app.classList.remove('hidden');app.classList.add('flex');
+    setRole(loginRole);buildSidebar();buildNotifications();buildRolePanel();initSSE();
+    toast('Welcome to UCSER Control Room','info');
+    if(!localStorage.getItem('ucser_toured'))setTimeout(startTour,900);
+}
+
+// ━━━ ROLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const ROLECFG={
+    default:{label:'DEFAULT',icon:'monitor',col:'#00F5FF',bodyC:'',roleDisp:'ROOT PRIVILEGES'},
+    redteam:{label:'RED TEAM',icon:'crosshair',col:'#FF3366',bodyC:'redteam-mode',roleDisp:'RED TEAM OPS'},
+    auditor:{label:'AUDITOR',icon:'clipboard-check',col:'#9A33FF',bodyC:'auditor-mode',roleDisp:'AUDIT OBSERVER'},
+};
+function setRole(r){
+    curRole=r;const c=ROLECFG[r]||ROLECFG.default;
+    document.body.classList.remove('redteam-mode','auditor-mode');
+    if(c.bodyC)document.body.classList.add(c.bodyC);
+    const btn=document.getElementById('role-btn');
+    btn.style.color=c.col;btn.style.borderColor=c.col+'4D';btn.style.background=c.col+'14';
+    document.getElementById('role-lbl').textContent=c.label;
+    document.getElementById('role-icon').setAttribute('data-lucide',c.icon);
+    document.getElementById('mode-lbl').textContent=`MODE: ${c.label}`;
+    document.getElementById('user-role').textContent=c.roleDisp;
+    document.getElementById('secure-badge').style.color=c.col;
+    document.getElementById('role-dd').classList.add('hidden');
+    lucide.createIcons();buildRolePanel();
+    if(r!=='default')toast(`Switched to ${c.label} mode`,'info');
+}
+function toggleRoleDD(){document.getElementById('role-dd').classList.toggle('hidden');}
+
+function buildRolePanel(){
+    const p=document.getElementById('role-panel');if(!p)return;
+    if(curRole==='redteam'){
+        p.innerHTML=`<h3 class="font-mono text-sm font-bold text-cyberRed border-b border-cyberRed/20 pb-2 flex items-center gap-2"><i data-lucide="crosshair" class="w-4 h-4"></i>THREAT MAP</h3><canvas id="tmap" width="240" height="180" class="w-full rounded mx-auto"></canvas><div class="flex flex-col gap-1.5 text-[10px] font-mono mt-2"><div class="flex justify-between"><span class="text-cyberRed">● Egress Attack</span><span class="text-cyberRed font-bold">BLOCKED</span></div><div class="flex justify-between"><span class="text-cyberYellow">● Port Scan</span><span class="text-cyberYellow font-bold">DETECTED</span></div><div class="flex justify-between"><span class="text-cyberOrange">● Priv Escalation</span><span class="text-cyberOrange font-bold">PREVENTED</span></div></div>`;
+        lucide.createIcons();setTimeout(drawThreatMap,100);
+    } else if(curRole==='auditor'){
+        p.innerHTML=`<h3 class="font-mono text-sm font-bold text-cyberPurple border-b border-cyberPurple/20 pb-2 flex items-center gap-2"><i data-lucide="clipboard-check" class="w-4 h-4"></i>COMPLIANCE SCORE</h3><div class="flex flex-col gap-2 text-xs font-mono"><div class="flex justify-between"><span class="text-slate-400">ISO 27001</span><span class="text-cyberGreen font-bold">95%</span></div><div class="w-full bg-black/30 rounded-full h-1.5"><div class="bg-cyberGreen rounded-full h-1.5" style="width:95%"></div></div><div class="flex justify-between mt-1"><span class="text-slate-400">NIST 800-53</span><span class="text-cyberGreen font-bold">89%</span></div><div class="w-full bg-black/30 rounded-full h-1.5"><div class="bg-cyberGreen rounded-full h-1.5" style="width:89%"></div></div><div class="flex justify-between mt-1"><span class="text-slate-400">HIPAA</span><span class="text-cyberYellow font-bold">72%</span></div><div class="w-full bg-black/30 rounded-full h-1.5"><div class="bg-cyberYellow rounded-full h-1.5" style="width:72%"></div></div></div><button type="button" onclick="switchView('explorer')" class="mt-2 text-[10px] font-mono text-cyberPurple hover:underline text-left">→ View full audit trail</button>`;
+        lucide.createIcons();
+    } else {
+        p.innerHTML=`<h3 class="font-mono text-sm font-bold text-cyberCyan border-b border-cyberCyan/12 pb-2">QUICK STATS</h3><div class="flex flex-col gap-2 text-xs font-mono"><div class="flex justify-between"><span class="text-slate-400">Total UCERs</span><span class="text-cyberCyan font-bold">1,247</span></div><div class="flex justify-between"><span class="text-slate-400">Blocked Today</span><span class="text-cyberRed font-bold" id="qs-blocks">3</span></div><div class="flex justify-between"><span class="text-slate-400">Adapters Active</span><span class="text-cyberGreen font-bold">2</span></div></div>`;
+    }
+}
+
+function drawThreatMap(){
+    const c=document.getElementById('tmap');if(!c)return;
+    const ctx=c.getContext('2d'),cx=c.width/2,cy=c.height/2,r=Math.min(cx,cy)-18;
+    ctx.clearRect(0,0,c.width,c.height);
+    [.33,.66,1].forEach(s=>{ctx.beginPath();ctx.arc(cx,cy,r*s,0,Math.PI*2);ctx.strokeStyle='rgba(0,245,255,.08)';ctx.lineWidth=1;ctx.stroke();});
+    ctx.beginPath();ctx.arc(cx,cy,12,0,Math.PI*2);ctx.fillStyle='rgba(0,245,255,.2)';ctx.fill();ctx.strokeStyle='#00F5FF';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#00F5FF';ctx.font='9px Fira Code';ctx.textAlign='center';ctx.fillText('UCSER',cx,cy+3);
+    [{a:45,d:.7,l:'Egress',col:'#FF3366'},{a:150,d:.5,l:'Port Scan',col:'#FFCC00'},{a:270,d:.8,l:'Priv Esc',col:'#FF6B35'},{a:320,d:.4,l:'Shadow',col:'#FF3366'}].forEach(v=>{
+        const rad=v.a*Math.PI/180,x=cx+Math.cos(rad)*r*v.d,y=cy+Math.sin(rad)*r*v.d;
+        ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);ctx.strokeStyle=v.col+'40';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+        ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle=v.col+'30';ctx.fill();ctx.strokeStyle=v.col;ctx.lineWidth=1.5;ctx.stroke();
+        ctx.fillStyle=v.col;ctx.font='8px Inter';ctx.textAlign='center';ctx.fillText(v.l,x,y+19);ctx.font='bold 8px Fira Code';ctx.fillText('✕',x,y+3);
+    });
+}
+
+// ━━━ CANVAS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let nodes=[],edges=[],nCount=0,selNode=null,hist=[],histIdx=-1,zoom=1,drag=null,dOff={x:0,y:0};
+let verSnaps=[];
+const NCOL={execution:{b:'#0055FF',bg:'rgba(0,85,255,.12)',t:'#93b4ff'},security:{b:'#9A33FF',bg:'rgba(154,51,255,.12)',t:'#c9a3ff'},control:{b:'#4A5568',bg:'rgba(74,85,104,.15)',t:'#9aa5b4'},ai:{b:'#FFCC00',bg:'rgba(255,204,0,.1)',t:'#ffe07a'}};
+
+function snapCanvas(lbl='Edit'){
+    hist=hist.slice(0,histIdx+1);
+    hist.push({lbl,ts:new Date().toISOString(),nodes:JSON.parse(JSON.stringify(nodes)),edges:JSON.parse(JSON.stringify(edges))});
+    histIdx=hist.length-1;
+    if(verSnaps.length>=10)verSnaps.shift();
+    verSnaps.push(hist[histIdx]);
+}
+function undoCanvas(){if(histIdx<=0){toast('Nothing to undo','warn');return;}histIdx--;const s=hist[histIdx];nodes=JSON.parse(JSON.stringify(s.nodes));edges=JSON.parse(JSON.stringify(s.edges));renderCanvas();toast('Undone','info');}
+function redoCanvas(){if(histIdx>=hist.length-1){toast('Nothing to redo','warn');return;}histIdx++;const s=hist[histIdx];nodes=JSON.parse(JSON.stringify(s.nodes));edges=JSON.parse(JSON.stringify(s.edges));renderCanvas();toast('Redone','info');}
+
+function addNode(type,name,cmd=''){
+    snapCanvas(`Add ${name}`);nCount++;
+    const id=`n${nCount}`,x=30+(nodes.length%4)*148,y=30+Math.floor(nodes.length/4)*90;
+    nodes.push({id,type,name,cmd,x,y,status:'pending'});
+    if(nodes.length>1)edges.push({src:nodes[nodes.length-2].id,tgt:id});
+    renderCanvas();updateCount();
+    document.getElementById('c-empty').classList.add('hidden');
+    toast(`Added ${name}`,'info');
+    validateNode(id,cmd);
+}
+function validateNode(id,cmd){
+    if(!cmd||cmd.startsWith('rego:')||cmd.startsWith('ai:'))return;
+    const c=cmd.split(':').slice(1).join(':');if(!c)return;
+    fetch('/api/simulate-rego',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({policy_name:'fs_integrity',input_json:{command:c}})})
+    .then(r=>r.json()).then(d=>{const n=nodes.find(x=>x.id===id);if(n){n.status=d.decision==='allow'?'valid':'block';n.vReason=d.reasons?.[0]||'';renderCanvas();}}).catch(()=>{});
+}
+function renderCanvas(){
+    const cn=document.getElementById('c-nodes'),ce=document.getElementById('c-edges');
+    cn.innerHTML='';ce.innerHTML='';
+    edges.forEach(e=>{
+        const s=nodes.find(n=>n.id===e.src),t=nodes.find(n=>n.id===e.tgt);if(!s||!t)return;
+        const x1=s.x+70,y1=s.y+28,x2=t.x+70,y2=t.y+28,cpx=(x1+x2)/2;
+        const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d',`M${x1},${y1} C${cpx},${y1} ${cpx},${y2} ${x2},${y2}`);
+        p.setAttribute('fill','none');p.setAttribute('stroke','rgba(0,245,255,.3)');p.setAttribute('stroke-width','2');p.setAttribute('marker-end','url(#ah)');
+        ce.appendChild(p);
+    });
+    nodes.forEach(n=>{
+        const col=NCOL[n.type]||NCOL.execution,div=document.createElement('div');
+        div.className='canvas-node absolute rounded-lg border text-xs font-mono p-2.5 w-36 select-none';
+        div.style.cssText=`left:${n.x}px;top:${n.y}px;background:${col.bg};border-color:${n.status==='block'?'#FF3366':n.status==='valid'?'#00FF66':col.b};color:${col.t}`;
+        div.id=`cn-${n.id}`;
+        if(n.id===selNode)div.classList.add('node-sel');
+        if(n.status==='valid')div.classList.add('node-valid');
+        if(n.status==='block')div.classList.add('node-block');
+        div.innerHTML=`<div class="flex justify-between items-start mb-1"><span class="font-bold truncate text-[11px] flex-grow">${n.name}</span><button type="button" onclick="delNode('${n.id}',event)" class="text-slate-500 hover:text-cyberRed ml-1 flex-shrink-0 text-[10px]">✕</button></div><div class="text-[9px] opacity-60 truncate">${n.cmd||'No Command'}</div>${n.status==='block'?`<div class="text-[8px] text-cyberRed mt-1">⚠ Policy Violation</div>`:''} ${n.status==='valid'?`<div class="text-[8px] text-cyberGreen mt-1">✓ Compliant</div>`:''}`;
+        div.addEventListener('mousedown',startDrag);
+        div.addEventListener('click',()=>selNodeFn(n.id));
+        cn.appendChild(div);
+    });
+    updateMinimap();
+    document.getElementById('c-empty').classList.toggle('hidden',nodes.length>0);
+    lucide.createIcons();
+}
+function startDrag(e){
+    if(e.button!==0||e.target.tagName==='BUTTON')return;
+    const d=e.currentTarget,id=d.id.replace('cn-','');
+    const n=nodes.find(x=>x.id===id);if(!n)return;
+    selNodeFn(id);drag=n;
+    const dr=d.getBoundingClientRect(),cr=document.getElementById('canvas-wrap').getBoundingClientRect();
+    dOff={x:e.clientX-dr.left,y:e.clientY-dr.top};
+    e.preventDefault();
+}
+document.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    const r=document.getElementById('canvas-wrap').getBoundingClientRect();
+    drag.x=Math.max(0,Math.min(e.clientX-r.left-dOff.x,r.width-144));
+    drag.y=Math.max(0,Math.min(e.clientY-r.top-dOff.y,r.height-60));
+    renderCanvas();
+});
+document.addEventListener('mouseup',()=>{if(drag){snapCanvas('Move');drag=null;}});
+
+function selNodeFn(id){
+    selNode=id;renderCanvas();
+    const n=nodes.find(x=>x.id===id);if(!n)return;
+    document.getElementById('props-pane').innerHTML=`<div class="flex flex-col gap-2.5 text-xs font-mono"><div class="text-[9px] text-slate-500 uppercase">${n.id}·${n.type}</div><div><p class="text-slate-400 mb-1">Label:</p><input type="text" value="${n.name}" oninput="updNode('${n.id}','name',this.value)" class="w-full bg-black/40 border border-cyberCyan/20 rounded p-1.5 text-slate-200"></div><div><p class="text-slate-400 mb-1">Command:</p><input type="text" value="${n.cmd}" oninput="updNode('${n.id}','cmd',this.value)" class="w-full bg-black/40 border border-cyberCyan/20 rounded p-1.5 text-slate-200" placeholder="adapter:cmd"></div>${n.vReason?`<div class="text-[9px] text-cyberRed bg-cyberRed/10 border border-cyberRed/20 p-1.5 rounded">⚠ ${n.vReason}</div>`:''}</div>`;
+}
+function updNode(id,prop,val){const n=nodes.find(x=>x.id===id);if(n){n[prop]=val;if(prop==='cmd')validateNode(id,val);renderCanvas();}}
+function delNode(id,e){e.stopPropagation();snapCanvas('Delete');nodes=nodes.filter(n=>n.id!==id);edges=edges.filter(e=>e.src!==id&&e.tgt!==id);if(selNode===id){selNode=null;document.getElementById('props-pane').innerHTML='<p class="text-slate-500 font-mono text-xs">Click a node to edit.</p>';}renderCanvas();updateCount();if(nodes.length===0)document.getElementById('c-empty').classList.remove('hidden');}
+function clearCanvas(){snapCanvas('Clear');nodes=[];edges=[];selNode=null;nCount=0;renderCanvas();updateCount();document.getElementById('c-empty').classList.remove('hidden');document.getElementById('props-pane').innerHTML='<p class="text-slate-500 font-mono text-xs">Click a node to edit.</p>';}
+function autoLayout(){if(!nodes.length)return;snapCanvas('Auto-layout');const cols=Math.max(1,Math.ceil(Math.sqrt(nodes.length)));nodes.forEach((n,i)=>{n.x=40+(i%cols)*155;n.y=30+Math.floor(i/cols)*90;});renderCanvas();toast('Canvas auto-arranged','info');}
+function fitCanvas(){zoom=1;const c=document.getElementById('c-nodes');if(c)c.style.transform='scale(1)';toast('Fit to screen','info');}
+function zoomC(d){zoom=d>0?Math.min(zoom+.1,2):Math.max(zoom-.1,.4);const c=document.getElementById('c-nodes'),s=document.getElementById('c-svg');if(c)c.style.transform=`scale(${zoom})`;if(s)s.style.transform=`scale(${zoom})`;}
+function updateCount(){document.getElementById('node-count').textContent=`${nodes.length} node${nodes.length!==1?'s':''}`;}
+function filterPalette(){const v=document.getElementById('pal-filter').value.toLowerCase();document.querySelectorAll('.pal-btn').forEach(b=>b.style.display=b.textContent.toLowerCase().includes(v)?'':'none');}
+function updateMinimap(){
+    const c=document.getElementById('minimap'),e=document.getElementById('mm-empty');if(!c)return;
+    const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
+    if(!nodes.length){e.classList.remove('hidden');return;}e.classList.add('hidden');
+    const sx=c.width/600,sy=c.height/400;
+    edges.forEach(edge=>{const s=nodes.find(n=>n.id===edge.src),t=nodes.find(n=>n.id===edge.tgt);if(!s||!t)return;ctx.beginPath();ctx.moveTo(s.x*sx+5,s.y*sy+5);ctx.lineTo(t.x*sx+5,t.y*sy+5);ctx.strokeStyle='rgba(0,245,255,.25)';ctx.lineWidth=.5;ctx.stroke();});
+    const tc={execution:'#0055FF',security:'#9A33FF',control:'#4A5568',ai:'#FFCC00'};
+    nodes.forEach(n=>{ctx.beginPath();ctx.rect(n.x*sx,n.y*sy,20,8);ctx.fillStyle=tc[n.type]||'#0055FF';ctx.globalAlpha=.7;ctx.fill();ctx.globalAlpha=1;});
+}
+
+// Version History
+let selVer=null;
+function showVersionHistory(){document.getElementById('ver-modal').classList.remove('hidden');buildVerList();}
+function buildVerList(){
+    const l=document.getElementById('ver-list');
+    l.innerHTML=verSnaps.length===0?'<p class="text-xs text-slate-500 font-mono">No history yet.</p>':verSnaps.slice().reverse().map((v,i)=>`<button type="button" onclick="previewVer(${verSnaps.length-1-i})" class="text-left text-[10px] font-mono p-2 rounded border border-cyberCyan/15 hover:border-cyberCyan transition flex flex-col gap-0.5"><span class="text-slate-200 font-bold">${v.lbl}</span><span class="text-slate-500">${new Date(v.ts).toTimeString().split(' ')[0]}</span><span class="text-slate-600">${v.nodes.length} nodes</span></button>`).join('');
+}
+function previewVer(i){
+    selVer=i;const v=verSnaps[i],prev=i>0?verSnaps[i-1]:{nodes:[],edges:[]};
+    const add=v.nodes.filter(n=>!prev.nodes.find(p=>p.id===n.id));
+    const rem=prev.nodes.filter(n=>!v.nodes.find(c=>c.id===n.id));
+    const mod=v.nodes.filter(n=>{const p=prev.nodes.find(p=>p.id===n.id);return p&&JSON.stringify(p)!==JSON.stringify(n);});
+    document.getElementById('ver-diff').innerHTML=`<p class="text-[10px] text-slate-400 mb-2">vs previous:</p>${add.map(n=>`<div class="diff-add text-[10px] rounded">+ ${n.name} (${n.type})</div>`).join('')}${rem.map(n=>`<div class="diff-rem text-[10px] rounded">- ${n.name}</div>`).join('')}${mod.map(n=>`<div class="text-cyberYellow pl-2 text-[10px] mb-0.5">~ Modified: ${n.name}</div>`).join('')}${!add.length&&!rem.length&&!mod.length?'<p class="text-slate-500 text-[10px]">No changes.</p>':''}`;
+}
+function restoreVer(){if(selVer===null){toast('Select a version first','warn');return;}const v=verSnaps[selVer];nodes=JSON.parse(JSON.stringify(v.nodes));edges=JSON.parse(JSON.stringify(v.edges));snapCanvas('Restore');renderCanvas();closeModal('ver-modal');toast('Version restored','info');}
+
+function aiGenerateDAG(){
+    const p=document.getElementById('ai-prompt').value;if(!p)return;
+    toast('Generating DAG...','info');clearCanvas();snapCanvas('AI generate');
+    setTimeout(()=>{addNode('execution','Scan Files','bash:ls -la');addNode('security','Policy Gate','rego:policy');addNode('execution','Execute Task','bash:echo done');addNode('security','Sign Receipt','rego:sign');toast('DAG compiled!','info');document.getElementById('ai-prompt').value='';},800);
+    sendMsgTo(`Generate a UCSER workflow for: "${p}". What nodes and policies do you recommend?`);
+}
+function exportWorkflowYAML(){if(!nodes.length){toast('Canvas is empty','warn');return;}const yaml=nodes.map(n=>`- name: ${n.name}\n  type: ${n.type}\n  command: "${n.cmd}"`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([yaml],{type:'text/yaml'}));a.download='workflow.yaml';a.click();toast('Exported YAML','info');}
+function deployWorkflow(){if(!nodes.length){toast('Canvas is empty','warn');return;}toast('Workflow deployed &amp; simulated','info');}
+function saveWorkflow(){if(curView!=='builder'){toast('Open Workflow Builder first','warn');return;}fetch('/api/workflows',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Custom Workflow',description:'User workflow',nodes,edges})}).then(()=>toast('Workflow saved ✓','info')).catch(()=>toast('Saved locally','info'));}
+
+// ━━━ REGO PLAYGROUND ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function runRego(){
+    const pol=document.getElementById('rego-sel').value;
+    let inp={};try{inp=JSON.parse(document.getElementById('rego-inp').value);}catch{toast('Invalid JSON','alert');return;}
+    fetch('/api/simulate-rego',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({policy_name:pol,input_json:inp})})
+    .then(r=>r.json()).then(d=>{const o=document.getElementById('rego-out');if(d.decision==='allow'){o.className='text-cyberGreen font-bold mt-1 uppercase';o.textContent='ALLOW — Compliance Approved';}else{o.className='text-cyberRed font-bold mt-1 uppercase';o.textContent=`DENY — ${d.reasons.join('; ')}`;}});
+}
+function loadPolicy(p){document.getElementById('rego-sel').value=p;toast(`Loaded ${p}.rego`,'info');}
+let batchCases=[];
+function addBatch(){const i=batchCases.length;batchCases.push({});const c=document.getElementById('batch-cases');const d=document.createElement('div');d.className='flex gap-1 items-center';d.innerHTML=`<input type="text" placeholder='{"command":"..."}' oninput="updBatch(${i},this.value)" class="flex-grow bg-black/40 border border-cyberCyan/10 rounded p-1 text-[10px] font-mono text-slate-300"><button type="button" onclick="this.parentElement.remove()" class="text-cyberRed text-[10px]">✕</button>`;c.appendChild(d);document.getElementById('batch-run-btn').classList.remove('hidden');}
+function updBatch(i,v){try{batchCases[i]=JSON.parse(v);}catch{}}
+function runBatch(){
+    const pol=document.getElementById('rego-sel').value;
+    const res=document.getElementById('batch-res');res.innerHTML='<p class="text-slate-500">Running...</p>';res.classList.remove('hidden');
+    Promise.all(batchCases.map(tc=>fetch('/api/simulate-rego',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({policy_name:pol,input_json:tc})}).then(r=>r.json())))
+    .then(all=>{res.innerHTML=all.map((r,i)=>`<div class="flex justify-between items-center p-1.5 rounded border ${r.decision==='allow'?'border-cyberGreen/20 bg-cyberGreen/5':'border-cyberRed/20 bg-cyberRed/5'}"><span class="text-[9px] font-mono">Case ${i+1}</span><span class="text-[9px] font-bold ${r.decision==='allow'?'text-cyberGreen':'text-cyberRed'}">${r.decision.toUpperCase()}</span></div>`).join('');toast(`Batch: ${all.filter(r=>r.decision==='allow').length}/${all.length} passed`,'info');});
+}
+function showPolicyDiff(){document.getElementById('diff-modal').classList.remove('hidden');}
+function exportPolicyPDF(){toast('Preparing policy PDF...','info');setTimeout(()=>window.print(),500);}
+
+// ━━━ EXECUTION MONITORING ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function jumpToStep(sid){
+    document.querySelectorAll('.gantt-bar').forEach(b=>b.classList.remove('active-bar'));
+    document.querySelector(`.gantt-bar[data-step="${sid}"]`)?.classList.add('active-bar');
+    const l=document.querySelector(`#exec-console [data-step="${sid}"]`);
+    if(l){l.scrollIntoView({behavior:'smooth',block:'center'});l.classList.add('bg-cyberCyan/10');setTimeout(()=>l.classList.remove('bg-cyberCyan/10'),1500);}
+    setBCSub(`Step ${sid.replace('step','')}`);
+}
+function toggleLogScroll(){logAutoScroll=!logAutoScroll;const b=document.getElementById('log-toggle-btn');b.textContent=logAutoScroll?'AUTO-SCROLL':'PAUSED';b.style.color=logAutoScroll?'#00F5FF':'#FFCC00';}
+function toggleExecScroll(){execAutoScroll=!execAutoScroll;const b=document.getElementById('exec-scroll-btn');b.textContent=execAutoScroll?'AUTO':'PAUSED';b.style.color=execAutoScroll?'#00F5FF':'#FFCC00';}
+function filterLogs(){const v=document.getElementById('log-filter').value.toLowerCase();document.querySelectorAll('#exec-console>div').forEach(r=>r.style.display=r.textContent.toLowerCase().includes(v)?'':'none');}
+function exportProof(){toast('Downloading audit trail package...','info');}
+
+// ━━━ SECURITY EXPLORER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toggleTL(btn){const d=btn.nextElementSibling,a=btn.querySelector('.tl-arrow');const open=d.style.display!=='flex'&&!d.classList.contains('flex');d.style.display=open?'flex':'none';if(a)a.style.transform=open?'rotate(180deg)':'';}
+function applyFilters(){
+    const kw=document.getElementById('f-kw').value.toLowerCase(),adp=document.getElementById('f-adapter').value,sev=document.getElementById('f-sev').value;
+    document.querySelectorAll('.tl-entry').forEach(e=>{
+        const ok=(!kw||e.textContent.toLowerCase().includes(kw))&&(!adp||e.dataset.adp===adp)&&(!sev||e.dataset.sev===sev);
+        e.style.display=ok?'':'none';
+    });toast('Filters applied','info');
+}
+function clearFilters(){['f-kw','f-adapter','f-sev','f-from','f-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.querySelectorAll('.tl-entry').forEach(e=>e.style.display='');toast('Cleared','info');}
+function fullAuditReport(){toast('Compiling audit report...','info');setTimeout(()=>{window.print();toast('Print/export ready','info');},800);}
+function genProof(){
+    const id=document.getElementById('proof-id').value;
+    fetch('/api/generate-proof',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command_id:id})})
+    .then(r=>r.json()).then(d=>{document.getElementById('proof-out').classList.remove('hidden');document.getElementById('proof-sig').textContent=d.proof_package.authority_signatures.control_plane;toast('Proof validated ✓','info');});
+}
+function genProofFor(id){document.getElementById('proof-id').value=id;switchView('explorer');genProof();}
+
+// ━━━ NOTIFICATIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let notifs=[
+    {id:1,type:'alert',title:'ISO 27001 Blocked Command',msg:'Red Team attack blocked on root filesystem',ts:Date.now(),read:false},
+    {id:2,type:'warn',title:'External IP Blocked',msg:'Connection to 185.122.4.99 blocked',ts:Date.now(),read:false},
+    {id:3,type:'success',title:'Execution Completed',msg:'FS Integrity Audit — UCER ucer-893f42c7 verified',ts:Date.now(),read:true},
+];
+let notifF='all';
+const NCOLORS={alert:'cyberRed',warn:'cyberYellow',success:'cyberGreen'};
+const NICONS={alert:'shield-alert',warn:'alert-triangle',success:'check-circle'};
+
+function buildNotifications(){
+    const list=document.getElementById('notif-list');if(!list)return;
+    const fil=notifF==='all'?notifs:notifs.filter(n=>n.type===notifF);
+    if(!fil.length){list.innerHTML='<p class="text-slate-500 text-xs font-mono text-center py-6">No notifications</p>';return;}
+    list.innerHTML=fil.map(n=>`<div class="flex gap-3 p-3 rounded-lg border ${n.read?'border-cyberCyan/5 opacity-60':'notif-unread'} cursor-pointer hover:border-cyberCyan/25 transition" onclick="markRead(${n.id})"><div class="w-8 h-8 rounded-lg bg-${NCOLORS[n.type]}/10 flex items-center justify-center flex-shrink-0"><i data-lucide="${NICONS[n.type]}" class="w-4 h-4 text-${NCOLORS[n.type]}"></i></div><div class="flex-grow"><div class="flex justify-between items-center"><p class="text-xs font-bold font-mono text-${NCOLORS[n.type]}">${n.title}</p>${!n.read?'<span class="w-2 h-2 rounded-full bg-cyberCyan flex-shrink-0"></span>':''}</div><p class="text-[11px] text-slate-400 mt-0.5">${n.msg}</p><p class="text-[10px] text-slate-600 font-mono mt-1">${new Date(n.ts).toLocaleTimeString()}</p></div></div>`).join('');
+    lucide.createIcons();
+    const u=notifs.filter(n=>!n.read).length;
+    document.getElementById('notif-badge').textContent=u;document.getElementById('notif-badge').style.display=u?'flex':'none';
+    const s=document.getElementById('notif-badge-s');if(s){s.textContent=u;s.style.display=u?'flex':'none';}
+}
+function filterNotif(f){notifF=f;document.querySelectorAll('.nf-btn').forEach(b=>{const a=b.dataset.nf===f;b.className=`nf-btn text-xs font-bold font-mono px-3 py-1.5 rounded-lg border transition ${a?(f==='alert'?'border-cyberRed text-cyberRed bg-cyberRed/10':f==='success'?'border-cyberGreen text-cyberGreen bg-cyberGreen/10':f==='warn'?'border-cyberYellow text-cyberYellow bg-cyberYellow/10':'border-cyberCyan text-cyberCyan bg-cyberCyan/10'):(f==='alert'?'border-cyberRed/30 text-cyberRed hover:bg-cyberRed/10':f==='success'?'border-cyberGreen/30 text-cyberGreen hover:bg-cyberGreen/10':f==='warn'?'border-cyberYellow/30 text-cyberYellow hover:bg-cyberYellow/10':'border-cyberCyan/30 text-cyberCyan hover:bg-cyberCyan/10')}`;});buildNotifications();}
+function markRead(id){const n=notifs.find(x=>x.id===id);if(n){n.read=true;buildNotifications();}}
+function markAllRead(){notifs.forEach(n=>n.read=true);buildNotifications();toast('All marked read','info');}
+function addNotif(type,title,msg){notifs.unshift({id:Date.now(),type,title,msg,ts:Date.now(),read:false});buildNotifications();}
+
+// ━━━ AI CO-PILOT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SYS_PROMPT=`You are SENTINEL AI, an expert security co-pilot for UCSER (Universal Cross-Shell Execution Runtime).
+You specialize in:
+- UCER (Universal Command Execution Records) — immutable audit records with cryptographic signatures (ED25519, Merkle chains)
+- Rego policy evaluation (OPA) for security gates and compliance enforcement
+- Sandbox isolation, execution tracing, and chain-of-custody provenance
+- Cross-platform command execution: bash, powershell, docker adapters
+- Compliance frameworks: ISO 27001, NIST 800-53, HIPAA, SOC2
+- Merkle root hashing and tamper-proof audit trails
+- Workflow DAG design and security gate placement
+
+Keep responses concise and technical. Use code formatting with backticks. Focus on security, auditability, and compliance.`;
+
+let chat=[{role:'system',content:SYS_PROMPT}];
+
+function toggleCopilot(){copilotOpen=!copilotOpen;document.getElementById('copilot-panel').classList.toggle('open',copilotOpen);}
+function clearCopilot(){chat=[{role:'system',content:SYS_PROMPT}];document.getElementById('copilot-msgs').innerHTML=`<div class="flex gap-2.5"><div class="w-6 h-6 rounded-full bg-cyberPurple/20 flex items-center justify-center flex-shrink-0 mt-0.5"><i data-lucide="sparkles" class="w-3 h-3 text-cyberPurple"></i></div><div class="glassmorphic rounded-lg rounded-tl-none p-3 text-xs text-slate-300 max-w-[85%]" style="border-color:rgba(154,51,255,.2)">History cleared. How can I assist?</div></div>`;lucide.createIcons();}
+function sendMsg(){const i=document.getElementById('copilot-in');const m=i.value.trim();if(!m)return;i.value='';sendMsgTo(m);}
+function sendMsgTo(msg){
+    if(!copilotOpen)toggleCopilot();
+    appendMsg('user',msg);chat.push({role:'user',content:msg});
+    const tid='t'+Date.now();
+    document.getElementById('copilot-msgs').innerHTML+=`<div id="${tid}" class="flex gap-2.5"><div class="w-6 h-6 rounded-full bg-cyberPurple/20 flex items-center justify-center flex-shrink-0 mt-0.5"><i data-lucide="sparkles" class="w-3 h-3 text-cyberPurple"></i></div><div class="glassmorphic rounded-lg rounded-tl-none p-3 flex gap-1.5 items-center" style="border-color:rgba(154,51,255,.2)"><span class="typing-dot w-1.5 h-1.5 rounded-full bg-cyberPurple"></span><span class="typing-dot w-1.5 h-1.5 rounded-full bg-cyberPurple"></span><span class="typing-dot w-1.5 h-1.5 rounded-full bg-cyberPurple"></span></div></div>`;
+    const msgs=document.getElementById('copilot-msgs');msgs.scrollTop=msgs.scrollHeight;
+    fetch('/api/ai-copilot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:chat,model:'claude-opus-4-5',max_tokens:800})})
+    .then(r=>r.json()).then(d=>{
+        const reply=d.choices?.[0]?.message?.content||'Error occurred.';
+        chat.push({role:'assistant',content:reply});
+        document.getElementById(tid)?.remove();
+        appendMsg('assistant',reply);
+    }).catch(()=>{document.getElementById(tid)?.remove();appendMsg('assistant','⚠️ Cannot reach BlacklistedAIProxy on port 3000. Run `install-and-run.bat` to start it. I can still help with UCSER concepts — just ask!');});
+}
+function appendMsg(role,txt){
+    const m=document.getElementById('copilot-msgs');
+    const fmt=txt.replace(/`([^`]+)`/g,'<code class="bg-black/50 border border-cyberPurple/20 px-1 py-0.5 rounded text-cyberPurple text-[10px]">$1</code>').replace(/\n/g,'<br>');
+    m.innerHTML+=role==='user'
+        ?`<div class="flex justify-end"><div class="bg-cyberCyan/10 border border-cyberCyan/20 rounded-lg rounded-tr-none p-3 text-xs text-slate-200 max-w-[85%]">${fmt}</div></div>`
+        :`<div class="flex gap-2.5"><div class="w-6 h-6 rounded-full bg-cyberPurple/20 flex items-center justify-center flex-shrink-0 mt-0.5"><i data-lucide="sparkles" class="w-3 h-3 text-cyberPurple"></i></div><div class="glassmorphic rounded-lg rounded-tl-none p-3 text-xs text-slate-300 max-w-[85%]" style="border-color:rgba(154,51,255,.2)">${fmt}</div></div>`;
+    m.scrollTop=m.scrollHeight;lucide.createIcons();
+}
+
+// ━━━ COMMAND PALETTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const CMDS=[
+    {n:'Overview Dashboard',a:()=>switchView('overview'),i:'gauge'},
+    {n:'Workflow Builder',a:()=>switchView('builder'),i:'git-branch'},
+    {n:'Execution Log',a:()=>switchView('executions'),i:'activity'},
+    {n:'Policies Center',a:()=>switchView('policies'),i:'shield-check'},
+    {n:'Security Explorer',a:()=>switchView('explorer'),i:'database'},
+    {n:'Notifications',a:()=>switchView('notifications'),i:'bell'},
+    {n:'Toggle AI Co-Pilot',a:toggleCopilot,i:'sparkles'},
+    {n:'Run Safe Intent',a:()=>runIntent('safe'),i:'play'},
+    {n:'Trigger Attack',a:()=>runIntent('violation'),i:'zap'},
+    {n:'Red Team Sim',a:runRedTeam,i:'crosshair'},
+    {n:'Save Workflow',a:saveWorkflow,i:'save'},
+    {n:'Export Workspace',a:exportWS,i:'download'},
+    {n:'Keyboard Shortcuts',a:showShortcuts,i:'keyboard'},
+    {n:'Default Mode',a:()=>setRole('default'),i:'monitor'},
+    {n:'Red Team Mode',a:()=>setRole('redteam'),i:'crosshair'},
+    {n:'Auditor Mode',a:()=>setRole('auditor'),i:'clipboard-check'},
+    {n:'Start Tour',a:startTour,i:'help-circle'},
+];
+let filtCmds=CMDS;
+function showPalette(){document.getElementById('palette').classList.remove('hidden');setTimeout(()=>document.getElementById('pal-in').focus(),50);searchPalette();}
+function searchPalette(){const v=document.getElementById('pal-in').value.toLowerCase();filtCmds=CMDS.filter(c=>c.n.toLowerCase().includes(v));document.getElementById('pal-results').innerHTML=filtCmds.map((c,i)=>`<button type="button" onclick="runCmd(${i})" class="w-full text-left p-2.5 rounded bg-white/5 hover:bg-cyberCyan/15 hover:text-cyberCyan cursor-pointer flex items-center gap-3 transition"><i data-lucide="${c.i}" class="w-4 h-4 flex-shrink-0 text-slate-500"></i><span>${c.n}</span></button>`).join('');lucide.createIcons();}
+function runCmd(i){const c=filtCmds[i];if(c){document.getElementById('palette').classList.add('hidden');c.a();}}
+function showShortcuts(){document.getElementById('shortcuts-modal').classList.remove('hidden');}
+
+// ━━━ ONBOARDING TOUR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const TOUR_STEPS=[
+    {el:'main-navbar',title:'Control Room Navbar',desc:'Global search (⌘K), role switching, notifications, and the AI Co-Pilot toggle are all here.'},
+    {el:'view-overview',title:'Overview Dashboard',desc:'Mission control — live metrics, console logs, execution feed, and system health at a glance.',center:true},
+    {el:'nav-builder',title:'Workflow Builder',desc:'Design DAG pipelines with drag-and-drop nodes. Full undo/redo, minimap, and AI prompt generation.'},
+    {el:'nav-executions',title:'Execution Log',desc:'Interactive Gantt timeline (click to jump), live log streaming, and cryptographic inspector.'},
+    {el:'nav-policies',title:'Policies Center',desc:'Manage Rego policies, run batch compliance tests, view version diffs, and export PDF coverage reports.'},
+    {el:'copilot-panel',title:'SENTINEL AI Co-Pilot',desc:'Your AI security expert powered by claude-opus-4-5 via BlacklistedAIProxy. Press Ctrl+B to toggle.',center:true},
+];
+let tourStep=0;
+function startTour(){tourStep=0;const ov=document.getElementById('tour-overlay');ov.classList.remove('hidden');ov.style.display='';document.getElementById('tour-spot').style.display='block';showTourStep(0);}
+function handleTourBackdrop(e){if(e.target===document.getElementById('tour-overlay'))endTour();}
+function showTourStep(i){
+    const s=TOUR_STEPS[i];
+    document.getElementById('tour-step-lbl').textContent=`STEP ${i+1} OF ${TOUR_STEPS.length}`;
+    document.getElementById('tour-title').textContent=s.title;
+    document.getElementById('tour-desc').textContent=s.desc;
+    document.getElementById('tour-next-btn').textContent=i===TOUR_STEPS.length-1?'FINISH ✓':'NEXT →';
+    document.getElementById('tour-dots').innerHTML=TOUR_STEPS.map((_,j)=>`<div class="w-2 h-2 rounded-full ${j===i?'bg-cyberCyan':'bg-slate-600'}"></div>`).join('');
+    const spot=document.getElementById('tour-spot'),card=document.getElementById('tour-card');
+    const el=document.getElementById(s.el);
+    if(el&&!s.center){
+        const r=el.getBoundingClientRect();
+        spot.style.cssText=`top:${r.top-4}px;left:${r.left-4}px;width:${r.width+8}px;height:${r.height+8}px;display:block`;
+        const ct=r.bottom+16,cl=Math.max(16,Math.min(r.left,window.innerWidth-336));
+        card.style.cssText=`top:${Math.min(ct,window.innerHeight-230)}px;left:${cl}px;transform:none`;
+    } else {
+        spot.style.display='none';
+        card.style.cssText='top:50%;left:50%;transform:translate(-50%,-50%)';
+    }
+}
+function nextTour(){if(tourStep>=TOUR_STEPS.length-1){endTour();return;}tourStep++;showTourStep(tourStep);}
+function endTour(){const ov=document.getElementById('tour-overlay');ov.classList.add('hidden');ov.style.display='none';document.getElementById('tour-spot').style.display='none';localStorage.setItem('ucser_toured','1');toast('Tour complete! Press ? for shortcuts.','info');}
+
+// ━━━ MAIN RUN ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function runIntent(type){
+    const box=document.getElementById('ov-console');
+    const ts=`[${new Date().toTimeString().split(' ')[0]}]`;
+    box.innerHTML+=`<div class="flex gap-2"><span class="text-slate-500">${ts}</span><span class="text-cyberCyan">[INFO]</span><span>Triggering ${type.toUpperCase()} execution...</span></div>`;
+    if(logAutoScroll)box.scrollTop=box.scrollHeight;
+    logCnt++;document.getElementById('log-badge').textContent=`${logCnt} events`;
+    const ep={safe:'/run-safe',powershell:'/run-powershell',violation:'/run-violation'};
+    fetch(ep[type]||'/run-safe',{method:'POST'}).catch(()=>{});
+}
+function runRedTeam(){toast('Launching Red Team Simulation...','warn');fetch('/api/red-team-sim',{method:'POST'}).catch(()=>{});}
+
+// ━━━ EXPORT / IMPORT WORKSPACE ━━━━━━━━━━━━━━━━━━━━━━━
+function exportWS(){
+    const d={version:'1.0',exported:new Date().toISOString(),canvas:{nodes,edges},policies:verSnaps,role:curRole,notifications:notifs};
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download=`ucser-workspace-${new Date().toISOString().split('T')[0]}.json`;a.click();toast('Workspace exported','info');
+}
+function importWS(ev){
+    const f=ev.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.canvas){nodes=d.canvas.nodes||[];edges=d.canvas.edges||[];renderCanvas();}if(d.role)setRole(d.role);toast('Workspace imported ✓','info');}catch{toast('Invalid file','alert');}};r.readAsText(f);
+}
+
+// Pinned items
+let pinned=JSON.parse(localStorage.getItem('ucser_pinned')||'[]');
+function buildPinned(){
+    const row=document.getElementById('pinned-row'),box=document.getElementById('pinned-box');if(!box)return;
+    if(!pinned.length){row.classList.add('hidden');return;}row.classList.remove('hidden');
+    box.innerHTML=pinned.map((p,i)=>`<div class="glassmorphic rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-mono cursor-pointer hover:border-cyberCyan/40 transition" onclick="switchView('${p.a||'overview'}')"><i data-lucide="pin" class="w-3 h-3 text-cyberCyan"></i><span>${p.l}</span><button type="button" onclick="event.stopPropagation();pinned.splice(${i},1);localStorage.setItem('ucser_pinned',JSON.stringify(pinned));buildPinned()" class="text-slate-500 hover:text-cyberRed ml-1">✕</button></div>`).join('');lucide.createIcons();
+}
+buildPinned();
+
+// ━━━ SSE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function initSSE(){
+    const src=new EventSource('/events');
+    src.onmessage=function(ev){
+        const d=JSON.parse(ev.data);
+        if(d.type==='log'){
+            const ts=`[${new Date().toTimeString().split(' ')[0]}]`;
+            const badge={info:`<span class="text-cyberCyan">[INFO]</span>`,warn:`<span class="text-cyberYellow">[WARN]</span>`,alert:`<span class="text-cyberRed">[ALERT]</span>`}[d.level]||`<span class="text-cyberCyan">[INFO]</span>`;
+            const entry=`<div class="flex gap-2"><span class="text-slate-500">${ts}</span>${badge}<span>${d.message}</span></div>`;
+            const ov=document.getElementById('ov-console');ov.innerHTML+=entry;if(logAutoScroll)ov.scrollTop=ov.scrollHeight;
+            const ec=document.getElementById('exec-console');ec.innerHTML+=entry;if(execAutoScroll)ec.scrollTop=ec.scrollHeight;
+            logCnt++;document.getElementById('log-badge').textContent=`${logCnt} events`;
+        }
+        else if(d.type==='cp_key'){document.getElementById('cp-key').innerText=d.key;}
+        else if(d.type==='audit_complete'){
+            const u=d.ucer;toast(`Completed: ${u.intent}`,'info');addNotif('success','Execution Completed',`${u.intent} — UCER ${u.command_id}`);
+            prependFeedItem(u.intent,u.command_id,false);
+            document.getElementById('delta-1').className='text-cyberRed text-[10px] font-bold';document.getElementById('delta-1').textContent='🔴 CHANGED';
+            updateInspector(u,false);addTimelineEntry(u,false);
+        }
+        else if(d.type==='audit_blocked'){
+            toast(`BLOCKED: ${d.reason}`,'alert');addNotif('alert','Policy Block',d.reason.slice(0,80));
+            const b=parseInt(document.getElementById('m-blocks').textContent)||0;document.getElementById('m-blocks').textContent=b+1;
+            prependFeedItem(d.ucer.intent,d.ucer.command_id,true);
+            document.getElementById('delta-2').className='text-cyberRed text-[10px] font-bold';document.getElementById('delta-2').textContent='🔴 VIOLATION';
+            const sb=document.getElementById('secure-badge');sb.style.color='#FF3366';sb.innerHTML='<i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>VIOLATED';
+            updateInspector(d.ucer,true,d.reason);addTimelineEntry(d.ucer,true);lucide.createIcons();
+        }
+        else if(d.type==='red_team_event'){
+            const msgs={scan:`Network alarm: Scan from ${d.host}`,egress:`Critical: Exfil attempt to ${d.host}`,tamper:'Intrusion blocked. FS protected.'};
+            toast(msgs[d.stage]||'Red team event',d.stage==='egress'?'alert':'warn');addNotif('warn',`Red Team: ${d.stage}`,d.message||'');
+            if(d.stage==='tamper'){const b=parseInt(document.getElementById('m-blocks').textContent)||0;document.getElementById('m-blocks').textContent=b+1;}
+            if(curRole==='redteam')drawThreatMap();
+        }
+    };
+    src.onerror=()=>setTimeout(initSSE,3000);
+}
+
+function prependFeedItem(intent,id,blocked){
+    const feed=document.getElementById('wf-feed');
+    const div=document.createElement('div');
+    div.className=`${blocked?'bg-cyberRed/5 border-cyberRed/20':'bg-black/30 border-cyberCyan/15'} border rounded-lg p-3 flex justify-between items-center`;
+    div.innerHTML=`<div><div class="flex items-center gap-2"><span class="font-mono text-xs font-bold ${blocked?'text-cyberRed':'text-white'}">${intent}</span><span class="text-[9px] ${blocked?'bg-cyberRed/15 text-cyberRed':'bg-cyberGreen/10 text-cyberGreen'} px-1.5 rounded font-bold">${blocked?'Blocked':'Success'}</span></div><p class="text-slate-400 text-[10px] mt-1">ID: ${id}</p></div><button type="button" onclick="switchView('executions')" class="text-${blocked?'cyberRed':'cyberCyan'} text-[10px] font-bold hover:underline">View →</button>`;
+    feed.prepend(div);
+}
+function updateInspector(u,blocked,reason=''){
+    const tr=u.traces?.[0]||{};
+    document.getElementById('inspector').innerHTML=blocked
+        ?`<div><p class="text-slate-400">Status:</p><div class="bg-cyberRed/10 border border-cyberRed/20 text-cyberRed p-2.5 rounded mt-1 flex justify-between items-center font-bold text-xs"><span>BLOCKED</span><i data-lucide="shield-alert" class="w-4 h-4"></i></div></div><div><p class="text-slate-400">Security Gate:</p><p class="text-cyberRed mt-1 text-xs">${reason}</p></div>`
+        :`<div><p class="text-slate-400">Status:</p><div class="bg-cyberGreen/10 border border-cyberGreen/20 text-cyberGreen p-2.5 rounded mt-1 flex justify-between items-center font-bold text-xs"><span>VERIFIED COMPLIANT</span><i data-lucide="check-circle" class="w-4 h-4"></i></div></div><div><p class="text-slate-400">Exit:</p><p class="text-white mt-1 text-xs">Code: ${tr.exit_code||0} (SUCCESS)</p></div><div><p class="text-slate-400">Duration:</p><p class="text-cyberCyan mt-1 text-xs">${tr.duration_ms||60}ms</p></div><div><p class="text-slate-400" data-tip="SHA-256 Merkle hash">Merkle Root:</p><p class="text-cyberCyan break-all mt-1 text-[10px]">${u.canonical_hash||'abf984be05c2ab4aff4504b01829a3be2d98165d'}</p></div><div><p class="text-slate-400">Signatures:</p><p class="text-cyberGreen mt-1">✓ Control Plane valid</p><p class="text-cyberGreen">✓ Witness valid</p></div>`;
+    lucide.createIcons();
+}
+function addTimelineEntry(u,blocked){
+    const tl=document.getElementById('timeline');
+    const d=document.createElement('div');
+    d.className='border border-cyberCyan/10 rounded-lg overflow-hidden tl-entry';d.dataset.sev=blocked?'high':'info';d.dataset.adp=(u.steps&&u.steps[0]?.adapter)||'bash';
+    d.innerHTML=`<button type="button" onclick="toggleTL(this)" class="w-full flex gap-3 items-center p-3 hover:bg-cyberCyan/5 transition text-left"><div class="${blocked?'text-cyberRed':'text-cyberGreen'} flex-shrink-0"><i data-lucide="${blocked?'x-circle':'check-circle'}" class="w-4 h-4"></i></div><div class="flex-grow text-xs font-mono"><div class="flex justify-between font-bold"><span>${u.intent}</span><span class="text-slate-500">${new Date().toISOString().slice(0,19).replace('T',' ')}</span></div><p class="text-slate-400 text-[10px] mt-0.5">${blocked?'Blocked by policy gate':'Witness verified.'}</p></div><i data-lucide="chevron-down" class="w-3.5 h-3.5 flex-shrink-0 text-slate-500 tl-arrow"></i></button><div class="tl-detail border-t border-cyberCyan/10 p-3 bg-black/30 flex flex-col gap-2 text-xs font-mono" style="display:none"><div><span class="text-slate-500">ID: </span><span class="text-cyberCyan">${u.command_id}</span></div><div><span class="text-slate-500">Status: </span><span class="${blocked?'text-cyberRed':'text-cyberGreen'}">${u.status}</span></div><button type="button" onclick="genProofFor('${u.command_id}')" class="text-cyberCyan hover:underline text-left text-[10px]">Generate Proof →</button></div>`;
+    tl.prepend(d);lucide.createIcons();
+}
+
+// ━━━ TOAST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toast(msg,type='info'){
+    const container=document.getElementById('toasts');
+    const cfg={info:{b:'border-cyberCyan',t:'text-cyberCyan',i:'info'},warn:{b:'border-cyberYellow',t:'text-cyberYellow',i:'alert-triangle'},alert:{b:'border-cyberRed',t:'text-cyberRed',i:'alert-circle'}}[type]||{b:'border-cyberCyan',t:'text-cyberCyan',i:'info'};
+    const el=document.createElement('div');
+    el.className=`glassmorphic border-l-4 ${cfg.b} px-4 py-3 rounded-lg shadow-xl text-xs font-mono w-72 flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-2`;
+    el.innerHTML=`<i data-lucide="${cfg.i}" class="w-4 h-4 flex-shrink-0 ${cfg.t}"></i><span class="flex-grow">${msg}</span><button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white flex-shrink-0">✕</button>`;
+    container.appendChild(el);lucide.createIcons();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.remove('opacity-0','translate-y-2')));
+    setTimeout(()=>{el.classList.add('opacity-0','translate-y-2');setTimeout(()=>el.remove(),300);},4500);
+}
+
+// ━━━ KEYBOARD SHORTCUTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+window.addEventListener('keydown',e=>{
+    const tag=document.activeElement.tagName,typing=['INPUT','TEXTAREA','SELECT'].includes(tag);
+    if(e.key==='Escape'){['palette','shortcuts-modal','ver-modal','diff-modal','role-dd'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));endTour();if(copilotOpen)toggleCopilot();return;}
+    if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();showPalette();return;}
+    if((e.metaKey||e.ctrlKey)&&e.key==='b'){e.preventDefault();toggleCopilot();return;}
+    if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();saveWorkflow();return;}
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();deployWorkflow();return;}
+    if((e.metaKey||e.ctrlKey)&&e.key==='z'&&curView==='builder'){e.preventDefault();undoCanvas();return;}
+    if((e.metaKey||e.ctrlKey)&&(e.key==='y'||(e.shiftKey&&e.key==='z'))&&curView==='builder'){e.preventDefault();redoCanvas();return;}
+    if(!typing&&e.key==='?'){showShortcuts();return;}
+    if(!typing&&(e.key==='Delete'||e.key==='Backspace')&&selNode&&curView==='builder'){delNode(selNode,{stopPropagation:()=>{}});return;}
+});
+document.addEventListener('click',e=>{
+    const dd=document.getElementById('role-dd'),rb=document.getElementById('role-btn');
+    if(!rb.contains(e.target)&&!dd.contains(e.target))dd.classList.add('hidden');
+    const pal=document.getElementById('palette');
+    if(!pal.classList.contains('hidden')&&!pal.firstElementChild?.contains(e.target))pal.classList.add('hidden');
+});
+</script>
+</body>
+</html>
