@@ -6,16 +6,8 @@
     Execute secure, cryptographically verifiable workflows across Bash, PowerShell, and more — with built-in compliance enforcement.
   </p>
 
-  <a href="https://github.com/dperry713/Universal-Cross-Shell-Execution-Runtime--UCSER-/releases">
-    <img src="https://img.shields.io/badge/Version-0.1.0--dev-blue?style=for-the-badge" alt="Version">
-  </a>
-  <a href="https://github.com/dperry713/Universal-Cross-Shell-Execution-Runtime--UCSER-/license">
-    <img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge" alt="License">
-  </a>
-  <a href="https://github.com/dperry713/Universal-Cross-Shell-Execution-Runtime--UCSER-/stargazers">
-    <img src="https://img.shields.io/github/stars/dperry713/Universal-Cross-Shell-Execution-Runtime--UCSER-?style=for-the-badge" alt="Stars">
-  </a>
-</div>
+
+
 
 ---
 
